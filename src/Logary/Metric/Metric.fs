@@ -22,7 +22,14 @@ type HistogramInfo =
     sum: float
     /// Which unit is the base unit for this histogram?
     unit: Logary.U
+    /// The singular name of the Histogram; prefer to use the `labels` if possible.
+    name: string
+    /// The description of the Histogram
+    description: string
   }
+
+  static member create(labels, buckets, sum, unit, name, description) =
+    { labels=labels; buckets=buckets; sum=sum; unit=unit; name=name; description=description }
 
 type MetricInfo =
   | Gauge of GaugeInfo

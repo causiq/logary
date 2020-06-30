@@ -120,6 +120,7 @@ type SpanOps with
     x.setDebug true
   member x.clearFlags () =
     x.setFlags (fun _ -> SpanFlags.None)
+
   member x.setAttribute (key: string, value: int) =
     x.setAttribute(key, Value.Int64 (int64 value))
   member x.setAttribute (key: string, value: int64) =
@@ -128,6 +129,10 @@ type SpanOps with
     x.setAttribute(key, Value.Float value)
   member x.setAttribute (key: string, value: bigint) =
     x.setAttribute(key, Value.BigInt value)
+  member x.setAttribute (key: string, value: bool) =
+    x.setAttribute(key, Value.Bool value)
+  member x.setAttribute (key: string, value: string) =
+    x.setAttribute(key, Value.Str value)
 
 type LogaryMessage with
   member x.asInstant = Instant.ofEpoch x.timestamp

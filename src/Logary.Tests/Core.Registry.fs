@@ -177,7 +177,7 @@ let tests =
         do! parentSpan.finishAck()
 
         // log via a non-Span attached logger;
-        do! b.eventAck("some log message", fun m -> m.spanId <- Some childSpan.context.spanId)
+        do! b.eventAck("some log message", fun m -> m.parentSpanId <- Some childSpan.context.spanId)
 
         // now let's finish the child
         do! childSpan.finishAck()

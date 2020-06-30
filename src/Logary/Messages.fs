@@ -40,7 +40,7 @@ type LogaryMessage =
 
   /// Optional SpanId; useful for streaming SDK implementations; is overridden in SpanMessage to point to the
   /// SpanContext within.
-  abstract spanId: SpanId option
+  abstract parentSpanId: SpanId option
 
 [<RequireQualifiedAccess>]
 type ControlMessageKind =

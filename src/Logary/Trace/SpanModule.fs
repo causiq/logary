@@ -20,12 +20,22 @@ module Span =
 module LoggerEx =
   type Logger with
     /// Also see `startSpan`, `startChild`
+    ///
+    /// Parameters:
+    ///
+    /// parent: the parent span this span is started under
+    /// kind: the kind, Internal | Client | Server | Consumer | Producer
+    /// enhance: callback function to allow callers to set properties on the SpanBuilder
+    /// transform: callback function to allow callers to set properties on the Span as it's being finished (will be called later).
+    /// enableAmbient: whether to set Span as the Task-context, to avoid having to pass through the Span in all your functions (HERE BE DRAGONS). Default is 'false'
+    /// enableStreaming: whether to continuously log through events/histograms/gauges etc to the underlying logging infrastructure (or not: all events are kept inside the Span value). Default is 'true'
     member x.buildSpan(label: string,
                        ?parent: SpanContext,
                        ?kind: SpanKind,
                        ?enhance: SpanBuilder -> SpanBuilder,
                        ?transform: Model.SpanMessage -> Model.SpanMessage,
-                       ?enableAmbient: bool) =
+                       ?enableAmbient,
+                       ?enableStreaming) = // TODO: unbounded memory usage unless enabled
       let builder =
         SpanBuilder(label).setKind(defaultArg kind SpanKind.Internal)
           |> Option.defaultValue id enhance
@@ -34,25 +44,26 @@ module LoggerEx =
 
       builder
         .withTransform(Option.defaultValue id transform)
+        .setEnableStreaming(defaultArg enableStreaming true)
         .setAmbientEnabled(defaultArg enableAmbient false)
 
-    member x.buildSpan (label, parent: SpanMessage, ?kind, ?enhance, ?transform, ?enableAmbient) =
+    member x.buildSpan (label, parent: SpanMessage, ?kind, ?enhance, ?transform, ?enableAmbient, ?enableStreaming) =
       let nextKind = defaultArg kind parent.kind.next
-      x.buildSpan (label, parent.context, nextKind, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient)
+      x.buildSpan (label, parent.context, nextKind, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient, ?enableStreaming=enableStreaming)
 
-    member x.startSpan (label, ?parent: SpanMessage, ?kind, ?enhance, ?transform, ?enableAmbient) =
+    member x.startSpan (label, ?parent: SpanMessage, ?kind, ?enhance, ?transform, ?enableAmbient, ?enableStreaming) =
       let parentO = parent |> Option.map (fun p -> p.context)
-      let builder = x.buildSpan(label, ?kind=kind, ?parent=parentO, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient)
+      let builder = x.buildSpan(label, ?kind=kind, ?parent=parentO, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient, ?enableStreaming=enableStreaming)
       builder.startWith x
 
 
 [<AutoOpen>]
 module SpanLoggerEx =
   type SpanLogger with
-    member x.startChild (label: string, ?kind, ?enhance: SpanBuilder -> SpanBuilder, ?transform: Model.SpanMessage -> Model.SpanMessage, ?enableAmbient: bool) =
+    member x.startChild (label: string, ?kind, ?enhance: SpanBuilder -> SpanBuilder, ?transform: Model.SpanMessage -> Model.SpanMessage, ?enableAmbient: bool, ?enableStreaming: bool) =
       let kind = defaultArg kind x.kind.next
       let logger = x :> Logger
-      let builder = logger.buildSpan(label, x.context, kind, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient)
+      let builder = logger.buildSpan(label, x.context, kind, ?enhance=enhance, ?transform=transform, ?enableAmbient=enableAmbient, ?enableStreaming=enableStreaming)
       builder.startWith x
 
     member x.inject (propagator: Propagator, setter: Setter<'t>, target: 't): 't =
@@ -73,7 +84,7 @@ module SpanLoggerEx =
         label
           |> Option.bind nullIsNone
           |> Option.orElse memberName
-          |> Option.defaultValue "methodCall"
+          |> Option.defaultValue "time"
 
       let builder = defaultArg builder ignore
 
@@ -83,7 +94,7 @@ module SpanLoggerEx =
         let res = f input
         let finish = Internals.Global.getTimestamp()
         scope.finish(fun m ->
-          m.addCallerInfo(defaultArg memberName "timeFun", ?file=file, ?lineNo=lineNo)
+          m.setCallerInfo(defaultArg memberName "time", ?file=file, ?lineNo=lineNo)
           m.timestamp <- start
           m.finished <- Some finish
           builder m) |> ignore
@@ -101,16 +112,18 @@ module SpanLoggerEx =
           |> Option.orElse memberName
           |> Option.defaultValue "timeAlt"
 
-      let builder (m: Model.SpanMessage) =
-        m.addCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=lineNo)
+      let addShared (cancelled: bool) (m: Model.SpanMessage): unit =
+        m.setCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=lineNo)
+        if cancelled then m.setAttribute("cancelled", true)
+        m.setAttribute("outcome", if cancelled then "nack" else "ack")
         defaultArg builder ignore m
 
       // `runnable` will be re-invoked to prepare new Alt<_> values.
       let runnable () =
         let scope = x.startChild(label, ?kind=kind)
-        Alt.tryFinallyFun xA (fun () ->
-        scope.finish(builder)
-          |> ignore)
+        let onAck _ _ = scope.finish (addShared false) |> ignore
+        let onNack _ _ = scope.finish (addShared true) |> ignore
+        Alt.time onAck onNack xA
 
       Alt.prepareFun runnable
 
@@ -136,11 +149,12 @@ module SpanLoggerEx =
           |> Option.defaultValue "timeTaskProducer"
 
       let markFinished ranToCompletion (m: Model.SpanMessage) =
-        m.addCallerInfo(defaultArg memberName "timeTask", ?file=file, ?lineNo=lineNo)
+        m.setCallerInfo(defaultArg memberName "timeTaskProducer", ?file=file, ?lineNo=lineNo)
+        defaultArg builder ignore m
+
         let so = m :> SpanOps
         // why doesn't the compiler resolve the (string * Value) -> unit-overload without specifying SpanOps explicitly?
         if not ranToCompletion then so.setAttribute("cancelled", Value.Bool true)
-
 
       task {
         let span = x.startChild label

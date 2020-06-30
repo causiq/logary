@@ -8,11 +8,24 @@ open Logary.Trace
 open NodaTime
 
 type Logary.LogaryMessage with
-  member x.getAsBase(onMatchFailure: Logary.LogaryMessage -> #LogaryMessageBase): LogaryMessageBase =
+  /// Definitely gets the message as the mutable base type; if the user has logged own implementations of the interfaces
+  /// they are now replaced with the Logary-specified implementations.
+  member x.getAsBase(): LogaryMessageBase =
     match x with
     | :? LogaryMessageBase as b -> b
-    | _ -> onMatchFailure x :> _
-    // Remember to add subtypes here when you build them.
+    | :? Logary.ControlMessage as c -> Model.ControlMessage c :> _
+    | :? Logary.EventMessage as e -> Model.Event e :> _
+    | :? Logary.GaugeMessage as g -> Model.GaugeMessage g :> _
+    | :? Logary.HistogramMessage as h -> Model.HistogramMessage h :> _
+    | :? Logary.SpanMessage as s -> Model.SpanMessage s :> _
+    | :? Logary.IdentifyUserMessage as m -> Model.IdentifyUserMessage m :> _
+    | :? Logary.SetUserPropertyMessage as m -> Model.SetUserPropertyMessage m :> _
+    // TO CONSIDER: remember to add more subtypes here as you add them
+    | _ ->
+      let t = x.GetType()
+      let interfaces = t.GetInterfaces() |> Seq.map (fun i -> i.FullName) |> String.concat " ,"
+      failwithf "Unexpected implementation type '%s' of Logary.LogaryMessage; ensure ModelEx.fs:11 has a case for the new interfaces implemented by this type: { %s }"
+                t.FullName interfaces
 
 type Model.LogaryMessageBase with
   member x.setField(key, value: float) = x.setField(key, Value.ofPrimitive value)

@@ -70,7 +70,7 @@ type SpanMiddleware(next: RequestDelegate, logary: LogManager, logger: Logger) =
       let labels = RequestInfo.getLabels (ctx, logary.runtimeInfo.logger, fake) (Some route)
 
       let spanLogger, ctx = logger.startSpan ctx
-      spanLogger.logThrough()
+      spanLogger.enableStreaming()
 
       try
         do! next.Invoke(ctx)

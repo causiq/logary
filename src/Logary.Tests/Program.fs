@@ -10,4 +10,5 @@ let main args =
   let enUS = CultureInfo "en-US"
   Thread.CurrentThread.CurrentCulture   <- enUS
   Thread.CurrentThread.CurrentUICulture <- enUS
+//  Tests.runTestsInAssembly { defaultConfig with noSpinner = true } args
   Tests.runTestsInAssembly defaultConfig args

@@ -7,7 +7,7 @@ open Logary
 open Logary.Metric
 
 /// This configuration has no explicit label names
-let private basicConf = MetricConf.create("items.in.queue", "items in queue", U.Scalar)
+let private basicConf = MetricConf.create("queue_length", "The number of items in the queue", U.Scalar)
 /// This configuration has no explicit label names
 let private gaugeConf = GaugeConf.create basicConf
 
@@ -169,7 +169,7 @@ let tests =
               [ MetricInfo.Gauge { labels= Map.empty ; value = 25.; unit=U.Scalar } ]
 
       yield testCase "histogram detail" <| fun () ->
-        let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = sprintf "%s_histogram" gaugeConf.metricConf.name)
+        let bi, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = sprintf "%s_histogram" gaugeConf.metricConf.name)
 
         let bucketsInfo =
           [(5.,0.); (10.,1.); (50., 5.); (100., 1.); (Double.PositiveInfinity, 1.)]
@@ -177,7 +177,14 @@ let tests =
 
         metricDetails
           |> Expect.sequenceEqual "should have histogram detail"
-              [ MetricInfo.Histogram { labels=Map.empty; buckets=bucketsInfo; sum=float(200+60+45+40+25+15+7+25); unit=U.Scalar } ]
+              [ MetricInfo.Histogram {
+                labels=Map.empty
+                buckets=bucketsInfo
+                sum=float(200+60+45+40+25+15+7+25)
+                unit=U.Scalar
+                name=bi.name
+                description=bi.description
+              } ]
     ]
 
 
@@ -186,7 +193,7 @@ let tests =
     let whenUsingGaugeWithHistogram act =
       let registry = MetricRegistry()
       let histogramConf =
-        HistogramConf.create("some histogram", "some histogram", U.Scalar)
+        HistogramConf.create("request_latencies_seconds", "The distribution of request latencies", U.Seconds)
           |> HistogramConf.buckets testBuckets
 
       let gauge =
@@ -219,7 +226,14 @@ let tests =
 
       histDetails
         |> Expect.sequenceEqual "should have empty histogram detail"
-            [ MetricInfo.Histogram { labels=Map.empty; buckets=expectedHistogram; sum=0.; unit=U.Scalar } ]
+            [ MetricInfo.Histogram {
+              labels=Map.empty
+              buckets=expectedHistogram
+              sum=0.
+              unit=U.Seconds
+              name="request_latencies_seconds"
+              description="The distribution of request latencies"
+            } ]
 
     testCase "gauge with histogram has non-empty result" <| fun () ->
       // TODO: exact expectations on how Gauge maps to Histogram; verify this test
@@ -246,7 +260,14 @@ let tests =
 
       histDetails
         |> Expect.sequenceEqual "should have empty histogram detail"
-            [ MetricInfo.Histogram { labels=Map.empty; buckets=expectedHistogram; sum=10.; unit=U.Scalar } ]
+            [ MetricInfo.Histogram {
+              labels=Map.empty
+              buckets=expectedHistogram
+              sum=10.
+              unit=U.Seconds
+              name="request_latencies_seconds"
+              description="The distribution of request latencies"
+            } ]
 
 
     testCase "histogram with label" <| fun () ->
@@ -266,7 +287,7 @@ let tests =
 
       let metricInfos = registry.exportAll() |> Array.ofSeq
 
-      let _, metricDetails =
+      let bi, metricDetails =
         metricInfos
           |> Array.find (fun (basicInfo , _) -> basicInfo.name = histogramConf.metricConf.name)
 
@@ -277,8 +298,14 @@ let tests =
           |> Map.add Double.PositiveInfinity 0.
 
       metricDetails |> Expect.containsAll "should contains histogram detail" [
-          MetricInfo.Histogram { labels=Map ["queue name", "queue a"]; buckets=bucketsInfo |> Map.add 50. 1.; sum=15.; unit=U.Scalar };
-          MetricInfo.Histogram { labels=Map ["queue name", "queue b"]; buckets=bucketsInfo  |> Map.add 100. 1.; sum=85.; unit=U.Scalar }
+          MetricInfo.Histogram {
+            labels=Map ["queue name", "queue a"]; buckets=bucketsInfo |> Map.add 50. 1.; sum=15.; unit=U.Scalar
+            name=bi.name; description=bi.description
+          };
+          MetricInfo.Histogram {
+            labels=Map ["queue name", "queue b"]; buckets=bucketsInfo  |> Map.add 100. 1.; sum=85.; unit=U.Scalar
+            name=bi.name; description=bi.description
+          }
         ]
 
 

@@ -40,7 +40,7 @@ let tests =
             failtestf "Did not find field '%s' in 'fields' dictionary" field
           | Some _ -> ()
 
-        gm.spanId
+        gm.parentSpanId
           |> Expect.isNone "Has no spanId"
 
       let logger () = StubLogger("Core.Logger.api", Verbose)
@@ -100,7 +100,10 @@ let tests =
         res
           |> Expect.equal "Has the value from the nackIV" 10
 
-        do! logger.waitForAtLeast 1
+        let! found = logger.waitForAtLeast 1
+
+        found
+          |> Expect.isTrue "Did find at least one message"
 
         logger.logged.Count
           |> Expect.equal "Logged one message" 1
@@ -145,24 +148,20 @@ let tests =
         m.label
           |> Expect.equal "Has 'inner' as the label" "inner"
 
-      ftestCaseJob "scoped follows from" <| job {
+      testCaseJob "scoped follows from" <| job {
         // context
         let stubLogger = logger()
 
         // let main argv = ... — we start some new parent computation
         use parent = stubLogger.scoped "parent"
+        parent.info "I log therefore I am"
 
         // overload, both Logger and SpanLogger have method `timeAlt`.
         let randomWaitA = Alt.prepareJob (fun () -> Job.Random.bind (fun i -> Job.result (int (abs <| (int64 i) % 150L))) |> Job.map timeOutMillis)
-        let xA = parent.timeAlt(randomWaitA |> Alt.afterFun (fun () -> printfn "alt worker done"), "alt worker")
+        let xA = parent.timeAlt(randomWaitA, "alt worker")
 
-        // the work you'll schedule repeatedly
-        let prodA = parent.timeAltProducer(randomWaitA |> Alt.afterFun (fun () -> printfn "alt producer done"), "alt producer")
-
-        // similarly for tasks
-        use cts = new CancellationTokenSource()
-        let workU2T = parent.timeTaskProducer((fun _ -> Task.FromResult 42), cts.Token, "task worker")
-        ignore workU2T
+        // the work you'll schedule repeatedly which might go outside of Parent
+        let prodA = parent.timeAltProducer(randomWaitA, "alt producer")
 
         let shutdownIV = IVar ()
 
@@ -177,7 +176,7 @@ let tests =
         let! loopCompleteP = Promise.start (cronJob () |> Alt.afterFun (parent.finish >> ignore))
 
         // let the work-loop go for a bit
-        do! timeOutMillis 2000
+        do! timeOutMillis 300
 
         // then shut it down and get the logged messages
         do! IVar.fill shutdownIV ()
@@ -186,25 +185,48 @@ let tests =
         do! loopCompleteP
 
         // wait for asynchronously logged messages to appear in stub
-        do! stubLogger.waitForAtLeast 2
+        let! wasFound =
+          stubLogger.waitForAtLeast(
+            3,
+            withMatch=fun record -> record.message.tryGetFieldBool "cancelled" = Some true)
 
-        let messages = stubLogger.logged |> Seq.map (fun x -> x.message)
+        wasFound
+          |> Expect.isTrue "Found at least three messages with the 'cancelled=Some true' field"
+
+        let messages =
+          stubLogger.logged
+            |> Seq.map (fun x -> x.message)
+            |> Seq.choose (fun x -> x.tryGetAs<SpanMessage>())
+            |> Seq.filter (fun x -> x.label <> "parent")
+            |> List.ofSeq
 
         // from the above, we expect:
         for message in messages do
           let span = message.getAsOrThrow<SpanMessage>()
-
           span.label
             |> Expect.stringContains "Has 'alt ' in the label" "alt "
 
           (span.elapsed, Duration.Zero)
             |> Expect.isGreaterThan "Should have an elapsed value ≥ 0."
 
+          span.parentSpanId
+            |> Option.get
+            |> Expect.equal "That of 'parent'" parent.context.spanId
+
+          span.context.parentSpanId
+            |> Option.get
+            |> Expect.equal "That of 'parent'" parent.context.spanId
+
+        let fields =
+          let formatField (KeyValue (s, v)) = sprintf "%s=%O" s v
+          messages
+            |> Seq.map (fun m -> sprintf "%s: %s" m.label (m.fields |> Seq.map formatField |> String.concat ", "))
+            |> String.concat "\n"
+
         // there exists two messages that has the outcome/field cancelled=true
-        messages
-          |> Seq.filter (fun m -> match m.tryGetFieldBool "cancelled" with Some x -> x | _ -> false)
-          |> Seq.length
-          |> Expect.equal "Should be two cancelled messages" 2
+        let noCancelled = messages |> Seq.filter (fun m -> match m.tryGetFieldBool "cancelled" with Some x -> x | _ -> false) |> Seq.length
+        (noCancelled, 2)
+          |> Expect.isGreaterThan (sprintf "Should be at least two cancelled messages. Fields:\n%s" fields)
 
         let acked =
           messages |> Seq.filter (fun m -> match m.tryGetFieldString "outcome" with Some x when x = "ack" -> true | _ -> false)
@@ -216,6 +238,12 @@ let tests =
         (Seq.length messages, 2)
           |> Expect.isGreaterThan "Has more than two messages"
       }
+
+
+        // similarly for tasks
+        //use cts = new CancellationTokenSource()
+        //let workU2T = parent.timeTaskProducer((fun _ -> Task.FromResult 42), cts.Token, "task worker")
+        //ignore workU2T
     ]
 
     testList "Span" [

@@ -18,7 +18,7 @@ type SpanBuilder(label: string) =
   let _links = ResizeArray<_>(2)
   let _attrs = Dictionary<string, Value>(5)
   let mutable _status = SpanCanonicalCode.OK, None
-  let mutable _logThrough = false
+  let mutable _streaming = false
   let _events = ResizeArray<EventMessage>()
 
   let createContext (): SpanContext * SpanContext option =
@@ -97,8 +97,12 @@ type SpanBuilder(label: string) =
     _flags <- SpanFlags.None
     x
 
-  member x.logThrough () =
-    _logThrough <- true
+  member x.enableStreaming () =
+    _streaming <- true
+    x
+
+  member x.setEnableStreaming b =
+    _streaming <- b
     x
 
   member x.setKind kind =
@@ -152,5 +156,5 @@ type SpanBuilder(label: string) =
     let reset () = if _enableAmbient then ActiveSpan.setContext ambient
 
     new SpanLoggerImpl(logger, label, _transform, _started, context, _kind, _links,
-                       _attrs, _events, _status, reset, _logThrough)
+                       _attrs, _events, _status, reset, _streaming)
     :> SpanLogger

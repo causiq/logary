@@ -1,7 +1,10 @@
 namespace Logary.Tests
 
+#nowarn "25"
+
 open System
 open System.Collections.Generic
+open Logary.Metric
 open NodaTime
 open Logary
 open FsCheck
@@ -44,18 +47,6 @@ type Arbs =
       let! segments = Gen.listOfLength segs segment
       let path = "/" + (String.concat "/" segments)
       return Uri (sprintf "%s://%s%s" scheme domain.value path)
-    }
-    |> Arb.fromGen
-
-  static member Event(): Arbitrary<EventMessage> =
-    gen {
-      let! (NonEmptyString m)  = Arb.generate<NonEmptyString>
-      let! hasMoney = Arb.generate<bool>
-      if hasMoney then
-        let! money = Arb.generate<Money>
-        return Model.Event(m, Some money) :> EventMessage
-      else
-        return Model.Event m :> EventMessage
     }
     |> Arb.fromGen
 
@@ -106,7 +97,90 @@ type Arbs =
     Arb.Default.DateTimeOffset()
     |> Arb.convert Instant.FromDateTimeOffset (fun i -> i.ToDateTimeOffset())
 
-  static member SpanData(): Arbitrary<SpanMessage> =
+  static member ErrorInfo(): Arbitrary<ErrorInfo> =
+    gen {
+      let! (NonEmptyString m) = Arb.generate<NonEmptyString>
+      let! (NonEmptyString t) = Arb.generate<NonEmptyString>
+      return ErrorInfo(m, t, StackTrace())
+    }
+    |> Arb.fromGen
+
+
+  static member ModelHistogramMessage(): Arbitrary<Logary.Model.HistogramMessage> =
+    gen {
+      let registry = MetricRegistry()
+      let histogramConf = HistogramConf.create("request_latencies", "An histogram specifying how long each request takes", U.Seconds)
+      let genericMetric = registry.getOrCreate histogramConf
+      let! labels = Arb.generate<Map<string, string>>
+      let metric = genericMetric.withLabels labels
+
+      let! len = Gen.choose(0, 15)
+      let! genValues =
+        Gen.arrayOfLength len Arb.generate<NormalFloat>
+      let values = genValues |> Array.map (fun (NormalFloat f) -> f)
+      for v in values do
+        metric.observe v
+
+
+      let _, MetricInfo.Histogram hi = metric.explore()
+      return Model.HistogramMessage(hi)
+    }
+    |> Arb.fromGen
+
+  static member ModelGaugeMessage(): Arbitrary<Logary.Model.GaugeMessage> =
+    gen {
+      let! g = Arb.generate<Gauge>
+      let! labels = Arb.generate<Map<string, string>>
+      return Model.GaugeMessage(g, labels)
+    }
+    |> Arb.fromGen
+
+  static member GaugeMessage(): Arbitrary<Logary.GaugeMessage> =
+    Arbs.ModelGaugeMessage()
+      |> Arb.convert (fun m -> m :> _) (fun m -> m :?> Model.GaugeMessage)
+
+
+  static member ModelEventMessage(): Arbitrary<Logary.Model.Event> =
+    let generator = gen {
+      let! messageId = Arb.generate<Id>
+      let! level = Arb.generate<LogLevel>
+      let! parent = Gen.oneof [ Gen.constant None; Arb.generate<SpanId> |> Gen.map Some ]
+      let! (NonEmptyString event) = Arb.generate<NonEmptyString>
+      let! timestamp = Arb.generate<EpochNanoSeconds>
+      let! name = Arb.generate<PointName>
+      let! monetaryValue =
+        Gen.oneof [
+          Gen.constant None
+          Arb.generate<NonZeroInt>
+            |> Gen.map (fun (NonZeroInt i) -> money Currency.USD (float i))
+            |> Gen.map Some
+        ]
+      let! received =
+        Gen.oneof [
+          Gen.constant None
+          Gen.constant (timestamp + 1300L |> Some)
+        ]
+
+      let extract (NonEmptyString s, v) = s, v
+      let! fields = Gen.listOf (Arb.generate<NonEmptyString * Value> |> Gen.map extract) |> Gen.map Map
+      let! context = Gen.listOf (Arb.generate<NonEmptyString * Value> |> Gen.map extract) |> Gen.map Map
+      let! gauges = Gen.listOf (Arb.generate<NonEmptyString * Gauge> |> Gen.map extract) |> Gen.map Map
+      let! error = Arb.generate<ErrorInfo option>
+
+      let m = Model.Event(event, monetaryValue, timestamp, messageId, name, level, context, fields, gauges,
+                          ?received=received, ?error=error)
+      m.parentSpanId <- parent
+      return m
+    }
+    // TO CONSIDER: improve shrinker
+    let shrinker (_: Model.Event): Model.Event seq = Seq.empty
+    Arb.fromGenShrink (generator, shrinker)
+
+  static member EventMessage(): Arbitrary<Logary.EventMessage> =
+    Arbs.ModelEventMessage()
+      |> Arb.convert (fun m -> m :> _) (fun m -> m :?> Model.Event)
+
+  static member SpanMessage(): Arbitrary<Logary.SpanMessage> =
     let generator = gen {
       let! traceId = Arb.generate<TraceId>
       let! spanId = Arb.generate<SpanId>

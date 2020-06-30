@@ -38,7 +38,9 @@ and Histogram(conf, labels) =
       let basic = conf.metricConf
       let sumInfo = sumCounter.Sum()
       let bucketsInfo = sortedBucketCounters |> Map.map (fun _ counter -> counter.Sum())
-      let metricInfo = { labels=labels; sum=sumInfo; buckets=bucketsInfo; unit=basic.unit }
+      let metricInfo =
+        { labels=labels; sum=sumInfo; buckets=bucketsInfo; unit=basic.unit
+          name=basic.name; description=basic.description }
       basic.asInfo, MetricInfo.Histogram metricInfo
 
 module HistogramConf =

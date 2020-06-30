@@ -1,5 +1,6 @@
 namespace Logary.Model
 
+open System.Diagnostics
 open Logary
 open NodaTime
 open Logary.Internals
@@ -10,6 +11,7 @@ open System.Collections.Generic
 /// Once you pass mutable reference types into this message c'tor, those references are owned by the SpanMessage and
 /// should not be mutated from the outside.
 [<Sealed>]
+[<DebuggerDisplay("{debuggerDisplay,nq}")>]
 type SpanMessage(label: string,
                  transform: SpanMessage -> SpanMessage,
                  started: EpochNanoSeconds,
@@ -112,7 +114,7 @@ type SpanMessage(label: string,
 
       // set the error flag when errors are logged
       if message.level >= Error then
-        base.fields.Add("error", Value.Bool true)
+        base.fields.["error"] <- Value.Bool true
 
       if message.level > _highestLevel then
         _highestLevel <- message.level
@@ -131,11 +133,18 @@ type SpanMessage(label: string,
   member val finished = _finished with get, set
   member val status = _status with get, set
 
+  member internal x.debuggerDisplay
+    with get() =
+      let formatField (KeyValue (s, v)) = sprintf "%s=%O" s v
+      sprintf "%s %O flags=%O kind=%O id=%O with %i events and fields={ %s } (M.SpanMessage)"
+        x.label (x.elapsed.toGauge()) x.flags x.spanKind x.context.spanId events.Count
+        (x.fields |> Seq.map formatField |> String.concat "\n")
+
   override x.level with get() = _highestLevel and set v = _highestLevel <- v
 
-  override x.spanId
-    with get() = Some _context.spanId
-     and set v = v |> Option.iter (fun newSpanId -> _context <- _context.withSpanId newSpanId)
+  override x.parentSpanId
+    with get() = _context.parentSpanId
+     and set v = v |> Option.iter (fun newParent -> _context <- _context.withParentId (Some newParent))
 
   member x.setEvents (es: IReadOnlyList<_>) =
     Monitor.Enter _semaphore

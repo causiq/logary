@@ -11,6 +11,7 @@ open Logary.Internals
 
 module Alt =
 
+  /// Will pass the finish timestamp and the gauge duration into the `onComplete` and `onNack` callbacks.
   let time onComplete onNack (xA: Alt<'a>) =
     Alt.withNackJob (fun nack ->
       let ts = MonotonicClock.getTimestamp ()

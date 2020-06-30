@@ -20,6 +20,6 @@ type SpanLogger =
   abstract finishWithAck: ts:EpochNanoSeconds -> LogResult
   abstract finishWithAck: unit -> LogResult
 
-  /// Makes the `SpanLogger` log through to its Logger as well as keeping the events
-  /// in the Span.
-  abstract logThrough: unit -> unit
+  /// Makes the `SpanLogger` log through to its Logger as well as keeping the events in the Span. This is called
+  /// the 'streaming' mode.
+  abstract enableStreaming: unit -> unit

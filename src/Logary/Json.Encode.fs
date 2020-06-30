@@ -208,7 +208,7 @@ let logaryMessage: ObjectBuilder<LogaryMessage> =
   fun m ->
     E.required kind "type" m.kind
     >> E.required idEncoder "id" m.id
-    >> E.optional spanId "spanId" m.spanId
+    >> E.optional spanId "parentSpanId" m.parentSpanId
     >> E.required pointName "logger" m.name
     >> E.required level "level" m.level
     >> E.optional E.int64 "received" m.received
@@ -218,8 +218,10 @@ let logaryMessage: ObjectBuilder<LogaryMessage> =
     >> E.required (E.readDictWith gauge) "gauges" m.gauges
 
 let traceStateKey: JsonEncoder<TraceStateKey> =
-  fun t ->
-    E.string t.value
+  let inner (TraceStateKey (k, v)) =
+    E.required E.string "key" k
+    >> E.optional E.string "vendor" v
+  E.jsonObjectWith inner
 
 let traceStateBuilder: ObjectBuilder<TraceState> =
   let traceStateKV = E.listWith (E.tuple2 traceStateKey E.string)
@@ -245,14 +247,14 @@ let spanContext: JsonEncoder<SpanContext> =
   E.jsonObjectWith spanContextBuilder
 
 let spanLink: JsonEncoder<SpanLink> =
-  let inner predecessorE: ObjectBuilder<_> =
+  let inner predecessorE from: ObjectBuilder<_> =
     fun (predecessor, attrs) ->
-      E.required E.string "type" "followsFromTrace"
+      E.required E.string "type" (sprintf "followsFrom%s" from)
       >> E.required predecessorE "predecessor" predecessor
       >> E.required (E.readDictWith value) "attributes" attrs
 
-  let fromTrace = inner traceId
-  let fromSpan = inner spanContext
+  let fromTrace = inner traceId "Trace"
+  let fromSpan = inner spanContext "Span"
 
   function
   | FollowsFromTrace (preTraceId, attrs) ->

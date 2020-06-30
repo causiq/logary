@@ -55,10 +55,7 @@ module Logger =
   let apply (middleware: Model.LogaryMessageBase -> unit) (logger: Logger): Logger =
     { new LoggerWrapper(logger) with
         override x.logWithAck (waitForBuffers, message) =
-          let m =
-            match message with
-            | :? LogaryMessageBase as bm -> bm
-            | _ -> message.getAsBase Model.Event
+          let m = message.getAsBase()
           middleware m
           logger.logWithAck (waitForBuffers, m)
     }
@@ -281,7 +278,7 @@ module LoggerEx =
         ]
         let name = x.name |> PointName.setEnding measurement
         let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug, name=name)
-        m.addCallerInfo(defaultArg memberName "time", ?file=file, ?lineNo=lineNo)
+        m.setCallerInfo(defaultArg memberName "time", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         x.log m
 
@@ -310,7 +307,7 @@ module LoggerEx =
         ]
         let name = x.name |> PointName.setEnding measurement
         let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug, name=name)
-        m.addCallerInfo(defaultArg memberName "timeJob", ?file=file, ?lineNo=lineNo)
+        m.setCallerInfo(defaultArg memberName "timeJob", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         m
 
@@ -339,7 +336,7 @@ module LoggerEx =
         let name = x.name |> PointName.setEnding measurement
         let m = Model.GaugeMessage(dur, labels, timestamp=ts, level=Debug, name=name)
         m.setField("outcome", outcome)
-        m.addCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=lineNo)
+        m.setCallerInfo(defaultArg memberName "timeAlt", ?file=file, ?lineNo=lineNo)
         builder |> Option.iter (fun f -> f m)
         m
 
@@ -371,7 +368,7 @@ module LoggerEx =
         let outcome = if ranToCompletion then "ack" else "nack"
         let labels = labels |> Map.add "outcome" outcome
         let m = Model.GaugeMessage(g, labels, timestamp=started, level=Debug, name=name)
-        m.addCallerInfo(defaultArg memberName "timeTask", ?file=file, ?lineNo=lineNo)
+        m.setCallerInfo(defaultArg memberName "timeTask", ?file=file, ?lineNo=lineNo)
         m.setField("outcome", outcome)
         x.log(m, ?builder=builder)
 
@@ -388,12 +385,12 @@ module LoggerEx =
 
 
     [<CompiledName "Scoped">]
-    member x.scoped label =
+    member x.scoped(label, ?enableStreaming) =
       match x with
       | :? SpanLogger as s ->
-        s.startChild(label)
+        s.startChild(label, ?enableStreaming=enableStreaming)
       | _ ->
-        x.startSpan(label)
+        x.startSpan(label, ?enableStreaming=enableStreaming)
 
     [<CompiledName "Scoped">]
     member x.scoped(label: PointName) =

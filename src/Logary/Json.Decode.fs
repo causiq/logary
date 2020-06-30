@@ -204,7 +204,13 @@ let traceContext: JsonDecoder<IReadOnlyDictionary<string, string>> =
   D.mapWith D.string |> Decoder.map (fun m -> m :> IReadOnlyDictionary<string, string>)
 
 let traceState: JsonDecoder<TraceState> =
-  JsonResult.messageTypeUnknown "TODO: trace state decoder from JSON" |> Decoder.always
+  let traceStateKey =
+    let inner =
+          fun k vendor -> TraceStateKey (k, vendor)
+      <!> D.required D.string "key"
+      <*> D.optional D.string "vendor"
+    D.jsonObjectWith inner
+  TraceState.ofList <!> D.listWith (D.tuple2With traceStateKey D.string)
 
 let spanContext: JsonDecoder<SpanContext> =
   let decode =
@@ -305,8 +311,8 @@ let foldIntoBase (clock: IClock) (acc: #Model.LogaryMessageBase) (key: string, j
   match key with
   | "id" ->
     D.either idDecoder idHex json |> JsonResult.map (fun mId -> acc.id <- mId; acc)
-  | "spanId" ->
-    D.either spanId spanIdHex json |> JsonResult.map (fun spanId -> acc.spanId <- Some spanId; acc)
+  | "parentSpanId" ->
+    D.either spanId spanIdHex json |> JsonResult.map (fun spanId -> acc.parentSpanId <- Some spanId; acc)
   | "name" ->
     pointName json |> JsonResult.map (fun name -> acc.name <- name; acc)
   | "level" ->

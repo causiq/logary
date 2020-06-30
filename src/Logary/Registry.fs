@@ -124,7 +124,7 @@ module Registry =
           member x.logWithAck(waitForBuffers, message) =
             if Promise.Now.isFulfilled registry.isClosed then LogResult.registryClosed () else
             if message.level < x.level then LogResult.success else
-            let message = message.getAsBase Model.Event
+            let message = message.getAsBase()
             message.ensureName name
             registry.emit message
           member x.level =

@@ -1,6 +1,7 @@
 namespace Logary.Model
 
 open System.Collections.Generic
+open System.Diagnostics
 open Logary
 open Logary.Internals
 open Logary.Trace
@@ -10,7 +11,7 @@ open Logary.Trace
 type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
                        ?ctx: IReadOnlyDictionary<_,_>, ?fs: IReadOnlyDictionary<_,_>,
                        ?gauges: IReadOnlyDictionary<_,_>,
-                       ?received, ?spanId) =
+                       ?received, ?parentSpanId) =
   let ctx = lazy (ctx |> Option.map Dictionary<_,_> |> Option.defaultWith (fun () -> Dictionary<string, Value>()))
   let fs = lazy (fs |> Option.map Dictionary<_,_> |> Option.defaultWith (fun () -> Dictionary<string, Value>()))
   let gs = lazy (gauges |> Option.map Dictionary<_,_> |> Option.defaultWith (fun () -> Dictionary<string, Gauge>()))
@@ -26,7 +27,7 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
   abstract context: Dictionary<string, Value> with get
   abstract fields: Dictionary<string, Value> with get
   abstract gauges: Dictionary<string, Gauge> with get
-  abstract spanId: SpanId option with get, set
+  abstract parentSpanId: SpanId option with get, set
 
   default val kind = kind with get, set
   default val id = messageId with get, set
@@ -37,7 +38,7 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
   default val context = ctx.Value
   default val fields = fs.Value
   default val gauges = gs.Value
-  default val spanId = spanId with get, set
+  default val parentSpanId = parentSpanId with get, set
 
   /// You can set this property to a `Metric.BasicConf` counter value, to auto-export the gauge message as a counter.
   /// Ensure that you set all the BasicConf's labels in the logged message fields/context.
@@ -54,14 +55,14 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
   member x.ensureName altName =
     if x.name.isEmpty then x.name <- altName
 
-  member x.addCallerInfo(?site: string, ?file: string, ?lineNo: int, ?colNo: int) =
-    site |> Option.iter (fun site -> x.fields.Add("site", Value.Str site))
-    file |> Option.iter (fun file -> x.fields.Add("file", Value.Str file))
-    colNo |> Option.iter (fun colNo -> x.fields.Add("colNo", Value.Int64 (int64 colNo)))
-    lineNo |> Option.iter (fun lineNo -> x.fields.Add("lineNo", Value.Int64 (int64 lineNo)))
+  member x.setCallerInfo(?site: string, ?file: string, ?lineNo: int, ?colNo: int) =
+    site |> Option.iter (fun site -> x.fields.["site"] <- Value.Str site)
+    file |> Option.iter (fun file -> x.fields.["file"] <- Value.Str file)
+    colNo |> Option.iter (fun colNo -> x.fields.["colNo"] <- Value.Int64 (int64 colNo))
+    lineNo |> Option.iter (fun lineNo -> x.fields.["lineNo"] <- Value.Int64 (int64 lineNo))
 
-  member x.addCallerInfo(info: StackFrame) =
-    x.addCallerInfo(?site=info.site, ?file=info.file, ?lineNo=info.lineNo, ?colNo=info.colNo)
+  member x.setCallerInfo(info: StackFrame) =
+    x.setCallerInfo(?site=info.site, ?file=info.file, ?lineNo=info.lineNo, ?colNo=info.colNo)
 
   /// Adds an exception to the DTO.
   abstract addExn: e: exn * ?level: LogLevel -> unit
@@ -109,4 +110,4 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
     member x.fields = fs.Value :> _
     member x.gauges = gs.Value :> _
 
-    member x.spanId = x.spanId
+    member x.parentSpanId = x.parentSpanId

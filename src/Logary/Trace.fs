@@ -37,8 +37,12 @@ type SpanFlags =
 
 [<Struct>]
 type TraceStateKey =
-  TraceStateKey of key: string * vendor: string option
+  TraceStateKey of k: string * v: string option
 with
+  member x.key =
+    let (TraceStateKey (k, _)) = x in k
+  member x.vendor =
+    let (TraceStateKey (_, v)) = x in v
   member x.value =
     match x with
     | TraceStateKey (key, Some vendor) -> sprintf "%s@%s" key vendor
