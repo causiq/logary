@@ -34,7 +34,7 @@ let idEncoder: JsonEncoder<Id> =
 
 let idHex: JsonEncoder<Id> =
   fun tId ->
-    E.string (tId.To32HexString())
+    E.string (tId.to32HexString())
 
 let traceId: JsonEncoder<TraceId> = idEncoder
 let traceIdHex: JsonEncoder<TraceId> = idHex
@@ -330,6 +330,7 @@ let identifyUserMessage: JsonEncoder<IdentifyUserMessage> =
 let setUserPropertyMessageBuilder: ObjectBuilder<SetUserPropertyMessage> =
   fun supm ->
     E.requiredMixin logaryMessage supm
+    >> E.required E.string "userId" supm.userId
     >> E.required E.string "key" supm.key
     >> E.required value "value" supm.value
 

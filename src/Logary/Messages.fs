@@ -113,5 +113,6 @@ type IdentifyUserMessage =
 /// Sets a user-level property.
 type SetUserPropertyMessage =
   inherit LogaryMessage
+  abstract userId: string
   abstract key: string
   abstract value: Value

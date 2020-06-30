@@ -29,7 +29,7 @@ type Id =
     else
       Id.Zero
 
-  member x.To32HexString() =
+  member x.to32HexString() =
     String.Format("{0:x16}{1:x16}", x.high, x.low)
 
   override x.ToString() =

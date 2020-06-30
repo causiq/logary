@@ -146,30 +146,34 @@ let tests =
     testList "gauge with histogram" [
       let testBuckets = [| 5.; 10.; 50.; 100.; |]
       let registry = MetricRegistry()
-      let gauge =
-        gaugeConf
-          |> GaugeConf.withHistogram testBuckets
-          |> registry.getOrCreateUnlabelled
+      let gauge = lazy (
+        let g =
+          gaugeConf
+            |> GaugeConf.withHistogram testBuckets
+            |> registry.getOrCreateUnlabelled
+        g.set 200.
+        g.dec 140. // 60
+        g.dec 15.  // 45
+        g.dec 5.   // 40
+        g.dec 15.  // 25
+        g.dec 10.  // 15
+        g.dec 8.   // 7
+        g.inc 18.  // 25
+      )
 
-      gauge.set 200.
-      gauge.dec 140. // 60
-      gauge.dec 15.  // 45
-      gauge.dec 5.   // 40
-      gauge.dec 15.  // 25
-      gauge.dec 10.  // 15
-      gauge.dec 8.   // 7
-      gauge.inc 18.  // 25
-
-      let metricInfos = registry.exportAll () |> Array.ofSeq
+      let metricInfos = lazy (
+        gauge.Force()
+        registry.exportAll () |> Array.ofSeq
+      )
 
       yield testCase "gauge detail" <| fun () ->
-        let _, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.metricConf.name)
+        let _, metricDetails = metricInfos.Value |> Array.find (fun (basicInfo , _) -> basicInfo.name = gaugeConf.metricConf.name)
         metricDetails
           |> Expect.sequenceEqual "should have one gauge detail"
               [ MetricInfo.Gauge { labels= Map.empty ; value = 25.; unit=U.Scalar } ]
 
       yield testCase "histogram detail" <| fun () ->
-        let bi, metricDetails = metricInfos |> Array.find (fun (basicInfo , _) -> basicInfo.name = sprintf "%s_histogram" gaugeConf.metricConf.name)
+        let bi, metricDetails = metricInfos.Value |> Array.find (fun (basicInfo , _) -> basicInfo.name = sprintf "%s_histogram" gaugeConf.metricConf.name)
 
         let bucketsInfo =
           [(5.,0.); (10.,1.); (50., 5.); (100., 1.); (Double.PositiveInfinity, 1.)]
@@ -188,6 +192,7 @@ let tests =
     ]
 
 
+    //
     let testBuckets = [| 5.; 10.; 50.; 100.; Double.PositiveInfinity |]
 
     let whenUsingGaugeWithHistogram act =
@@ -235,39 +240,52 @@ let tests =
               description="The distribution of request latencies"
             } ]
 
-    testCase "gauge with histogram has non-empty result" <| fun () ->
-      // TODO: exact expectations on how Gauge maps to Histogram; verify this test
-
+    testCase "gauge with histogram causes observation on every inc or dec call" <| fun () ->
       let gaugeDetails, histDetails = whenUsingGaugeWithHistogram <| fun g ->
-        g.inc 10.
-        g.inc 5.
-        g.inc 15.
+        g.inc 10. // bucket index 1 (10) => 10
+        g.inc 4.9 // bucket index 2 (50) => 14.9
+        g.dec 10. // bucket index 0 (5) => 4.9
+        g.inc 49. // bucket index 3 (100) => 53.9
 
       // gauge metric
       gaugeDetails
-        |> Expect.sequenceEqual "should have one empty gauge details"
-            [ MetricInfo.Gauge { labels=Map.empty; value=30.; unit=U.Scalar } ]
+        |> Expect.sequenceEqual "should have one empty gauge detail"
+            [ MetricInfo.Gauge {
+               labels=Map.empty
+               value=53.9
+               unit=U.Scalar
+            } ]
 
       // histogram metric
-      let expectedHistogram =
-        testBuckets
-          |> Array.mapi (fun i bucket ->
-            if i = 0 then bucket, 5.
-            elif i = 1 then bucket, 10.
-            elif i = 2 then bucket, 15.
-            else bucket, 0.)
-          |> Map.ofSeq
+      let (Histogram h) = histDetails.[0]
 
-      histDetails
-        |> Expect.sequenceEqual "should have empty histogram detail"
-            [ MetricInfo.Histogram {
-              labels=Map.empty
-              buckets=expectedHistogram
-              sum=10.
-              unit=U.Seconds
-              name="request_latencies_seconds"
-              description="The distribution of request latencies"
-            } ]
+      let expectedBuckets = Map [
+        5., 1.
+        10., 1.
+        50., 1.
+        100., 1.
+        infinity, 0.
+      ]
+
+      h.buckets
+        |> Seq.iter (fun (KeyValue (bucket, value)) ->
+          value
+            |> Expect.floatClose
+                 (sprintf "The bucket %f should be very close to expected" bucket)
+                 Accuracy.veryHigh
+                 expectedBuckets.[bucket])
+
+      h.sum
+        |> Expect.floatClose
+            "The sum of the histogram should be close"
+            Accuracy.veryHigh
+            83.7
+
+      h.name
+        |> Expect.equal "Has correct name" "request_latencies_seconds"
+
+      h.description
+        |> Expect.equal "Has correct description" "The distribution of request latencies"
 
 
     testCase "histogram with label" <| fun () ->

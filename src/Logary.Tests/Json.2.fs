@@ -1,7 +1,10 @@
 module Logary.Tests.Json_2
 
 open Expecto
-//open Expecto.Flip
+open Expecto.Logging
+open Expecto.Logging.Message
+let logger = Log.create "Json_2"
+
 open Logary
 open Logary.Internals
 open Logary.Internals.Chiron
@@ -9,8 +12,9 @@ open Logary.Json
 module E = Encode
 module D = Decode
 
+
 let testEncode suffix (encoder: JsonEncoder<'a>) =
-  let testName = sprintf "decode %s%s" typeof<'a>.FullName (suffix |> Option.defaultValue "")
+  let testName = sprintf "encode %s%s" typeof<'a>.FullName (suffix |> Option.defaultValue "")
   testPropertyWithConfig fsc testName <| fun (value: 'a) ->
   encoder value
     |> ignore
@@ -64,7 +68,7 @@ let tests =
   pair E.currency D.currency
   pair E.errorInfo D.errorInfo
   pair E.errorInfos D.errorInfos
-  pair E.eventMessage (D.eventMessage clock)
+//  pair E.eventMessage (D.eventMessage clock)
   pair E.gauge D.gauge
   pair E.gaugeMessage (D.gaugeMessage clock)
   pair E.histogramMessage (D.histogramMessage clock)
@@ -94,6 +98,11 @@ let tests =
     testList "tdd" [
       testPropertyWithConfigStdGen (879933225, 296761504) fsc "roundtrip Logary.Currency" (buildRoundtrip (E.currency, D.currency))
       testRoundtrip None (E.units, D.units)
+      testPropertyWithConfig fsc "can generate Model.Event" <| fun (e: Model.Event) -> ignore e
+      testDecode None (D.eventMessage clock) (Json.parse """{"event":"Hello world"}""" |> JsonResult.getOrThrow)
+      testDecode (Some " simplest") (D.eventMessage clock) (Json.parse """{"event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}""" |> JsonResult.getOrThrow)
+      testDecode (Some " w ts") (D.eventMessage clock) (E.eventMessage (Model.Event("Hello world 3")))
+      //testDecode (Some " using Arb") (D.eventMessage clock) (Arb.generate<Model.Event> |> Gen.sample 1 1 |> List.head |> E.eventMessage)
     ]
   ]
   |> testLabel "logary"

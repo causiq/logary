@@ -102,12 +102,14 @@ let value: JsonDecoder<Value> =
   let floatDecoder = Value.Float <!> D.float
   let bigintDecoder = Value.BigInt <!> D.bigint
   let boolDecoder = Value.Bool <!> D.bool
+  let stringDecoder = Value.Str <!> D.string
 
   D.oneOf [
-    objectDecoder
+    stringDecoder
     floatDecoder
-    bigintDecoder
     boolDecoder
+    objectDecoder
+    bigintDecoder
   ]
 
 let currency: JsonDecoder<Currency> =
@@ -273,22 +275,19 @@ let errorInfo: JsonDecoder<ErrorInfo> =
     DotNetStacktrace.tryParse
       >> JsonResult.ofOption (InvalidJson "Could not deserialise ErrorInfo from JSON")
 
-  let errorInfoDecoderR, errorInfoDecoder = D.ref ()
-
-  let rec objectReader: ObjectReader<ErrorInfo> =
+  let rec objectReader (): ObjectReader<ErrorInfo> =
         fun m et st i -> ErrorInfo(?message=m, ?errorType=et, ?stackTrace=st, ?inner=i)
     <!> D.optional D.string "message"
     <*> D.optional D.string "errorType"
     <*> D.optional stackTrace "stackTrace"
     // Look up how to handle refs/recursive definitions
-    <*> D.optional errorInfoDecoder "inner"
+    <*> D.optional (D.delay decoder) "inner"
 
-  and decoder: JsonDecoder<ErrorInfo> =
-    D.jsonObjectWith objectReader
+  and decoder (): JsonDecoder<ErrorInfo> =
+    D.jsonObjectWith (objectReader ())
 
-  errorInfoDecoderR := decoder
-
-  D.either (D.string >=> stringDecoder) errorInfoDecoder
+  D.either (D.string >=> stringDecoder)
+           (decoder ())
 
 let errorInfos = D.arrayWith errorInfo
 
@@ -451,11 +450,12 @@ let identifyUserMessage (clock: IClock): JsonDecoder<Model.IdentifyUserMessage> 
 
 let setUserPropertyMessageReader clock: ObjectReader<Model.SetUserPropertyMessage> =
   let ctorDecoder =
-        fun key value -> key, value
-    <!> D.required D.string "key"
+        fun userId key value -> userId, key, value
+    <!> D.required D.string "userId"
+    <*> D.required D.string "key"
     <*> D.required value "value"
 
-  logaryMessageWith clock ctorDecoder (fun (k, v) -> Model.SetUserPropertyMessage(k, v))
+  logaryMessageWith clock ctorDecoder (fun (u, k, v) -> Model.SetUserPropertyMessage(u, k, v))
 
 let setUserPropertyMessage clock: JsonDecoder<Model.SetUserPropertyMessage> =
   D.jsonObjectWith (setUserPropertyMessageReader clock)

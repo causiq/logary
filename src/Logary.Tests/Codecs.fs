@@ -21,29 +21,6 @@ let tests =
       | Result.Error err ->
         failtestf "%s" err
 
-    testList "json" [
-      testCase "with field's error and stacktrace" <| fun () ->
-        let sample = @"{""name"": ""MyProgram.ModuleA"", ""level"": ""Fatal"", ""event"": ""App fatal error while saving image"", ""fields"": { ""user"": { ""id"": 1, ""username"": ""haf"" }, ""error"": ""System.IO.FileNotFoundException: Could not load file or assembly 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47' or one of its dependencies. The system cannot find the file specified.\nFile name: 'Google.Api.Gax.Rest, Version=2.2.1.0, Culture=neutral, PublicKeyToken=3ec5ea7f18953e47'\n   at Google.Cloud.Storage.V1.StorageClient.Create(GoogleCredential credential, EncryptionKey encryptionKey)\n   at A.B.C.D.Image.ImageService.<>c.<.ctor>b__4_0() in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 27\n   at System.Lazy`1.CreateValue()\n   at System.Lazy`1.LazyInitValue()\n   at A.B.C.D.Image.ImageService.TryGetFileSizeGCloud(String url, Int64& fileSize) in C:\\A\\B\\C\\D\\Image\\ImageService.cs:line 119\n\nWRN: Assembly binding logging is turned OFF.\nTo enable assembly bind failure logging, set the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog] (DWORD) to 1.\nNote: There is some performance penalty associated with assembly bind failure logging.\nTo turn this feature off, remove the registry value [HKLM\\Software\\Microsoft\\Fusion!EnableLog].\n\n"" } }"
-        match Codec.json (Ingested.String sample) with
-        | Result.Ok m ->
-          let e = m.[0].getAsOrThrow<EventMessage>()
-
-          e.name
-            |> Expect.equal "Should parse name of logger" (PointName.parse "MyProgram.ModuleA")
-
-          e.error
-            |> Expect.isSome "Has an error"
-
-          e.tryGetField "error"
-            |> Expect.isNone "Doesn't parse stacktraces into a field"
-
-          e.error.Value.stackTrace.frames
-            |> Expect.isNonEmpty "Has at least one frame in the stacktrace"
-
-        | Result.Error err ->
-          failtestf "%A" err
-    ]
-
     testList "log4j XML" [
       testCase "log4j XML 1" <| fun () ->
         let sample = """<log4j:event logger="com.howtodoinjava.Log4jXMLLayoutExample" timestamp="1523366809000" level="INFO" thread="main">
@@ -116,10 +93,15 @@ method="run" file="Generator.java" line="94"/>
           m.error
             |> Expect.isSome "Has an `error` property"
 
-          m.error
-            |> Expect.equal "Should parse throwable correctly"
-                  (DotNetStacktrace.tryParse "java.lang.Exception: someexception-third
- 	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)")
+          let parsed =
+            DotNetStacktrace.tryParse "java.lang.Exception: someexception-third
+             	at org.apache.log4j.chainsaw.Generator.run(Generator.java:94)"
+            |> Option.get
+
+          m.error.Value.message
+            |> Expect.equal "Should parse throwable correctly" parsed.message
+          m.error.Value.errorType
+            |> Expect.equal "Should parse throwable correctly" parsed.errorType
 
         | Result.Error err ->
           failtestf "%s" err

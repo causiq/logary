@@ -1,5 +1,6 @@
 namespace Logary
 
+open System
 open System.Collections.Generic
 
 type ModuleInfo(?name, ?buildId) =
@@ -30,7 +31,6 @@ type StackTrace(?stackFrames: StackFrame[], ?droppedFramesCount) =
   member val frames: IList<StackFrame> = fr :> _ with get, set
   member val droppedFramesCount: uint16 = defaultArg droppedFramesCount 0us with get, set
 
-
 type ErrorInfo(?message, ?errorType, ?stackTrace, ?inner) =
   let st = stackTrace |> Option.defaultWith StackTrace
   member val message: string option = message with get, set
@@ -38,3 +38,7 @@ type ErrorInfo(?message, ?errorType, ?stackTrace, ?inner) =
   member val stackTrace: StackTrace = st with get, set
   member val inner: ErrorInfo option = inner with get, set
 
+  interface IEquatable<ErrorInfo> with
+    member x.Equals o =
+      x.message = o.message
+      && x.errorType = o.errorType

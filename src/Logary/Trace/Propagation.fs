@@ -262,7 +262,7 @@ module W3C =
     else spanCtx |> Option.map (fun ctx -> ctx.withContext traceContext)
 
   let inject (setter: Setter<'a>) (ctx: SpanContext) (target: 'a): 'a =
-    let value = sprintf "00-%s-%O-%02x" (ctx.traceId.To32HexString()) ctx.spanId (int ctx.flags)
+    let value = sprintf "00-%s-%O-%02x" (ctx.traceId.to32HexString()) ctx.spanId (int ctx.flags)
     setter (TraceParentHeader, value :: []) target
 
   let propagator =

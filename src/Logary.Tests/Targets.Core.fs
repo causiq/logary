@@ -84,8 +84,8 @@ module Files =
 
   let runtime (now: Instant) =
     Resource.create("my service", "myHost")
-    |> RuntimeInfo.create
-    |> RuntimeInfo.setGetTimestamp (fun _ -> now.ToUnixTimeTicks() * Constants.NanosPerTick)
+      |> RuntimeInfo.create
+      |> RuntimeInfo.setGetTimestamp (fun _ -> now.ToUnixTimeTicks() * Constants.NanosPerTick)
 
   let runtime2016_10_11T13_14_15 =
     runtime (Instant.FromUtc (2016, 10, 11, 13, 14, 15))
@@ -153,14 +153,14 @@ module Files =
           Expect.isTrue (regex.IsMatch actual) "Should match its own output"
 
         testCase "host" <| fun _ ->
-          let subject = Naming ("{host}", "log")
+          let subject = Naming ("{hostname}", "log")
           let actual = subject.formatS runtime2016_10_11T13_14_15
           Expect.equal actual "myHost.log" "Should format host name"
           let regex = subject.regex runtime2016_10_11T13_14_15
           Expect.isTrue (regex.IsMatch actual) "Should match its own output"
 
         testCase "combo host and service and datetime (no sep)" <| fun _ ->
-          let subject = Naming ("{host}{service}{datetime}", "log")
+          let subject = Naming ("{hostname}{service}{datetime}", "log")
           let actual = subject.formatS runtime2016_10_11T13_14_15
           Expect.equal actual "myHostmy service2016-10-11T13-14-15Z.log"
                        "Should format composite file name"
@@ -169,7 +169,7 @@ module Files =
 
         testCase "combo host and service and datetime" <| fun _ ->
           // ^[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.log$
-          let subject = Naming ("{host}-{service}-{datetime}", "log")
+          let subject = Naming ("{hostname}-{service}-{datetime}", "log")
           let actual = subject.formatS runtime2016_10_11T13_14_15
           Expect.equal actual "myHost-my service-2016-10-11T13-14-15Z.log"
                        "Should format composite file name"
@@ -180,7 +180,7 @@ module Files =
                                  regex)
 
         testList "invalids" [
-          for invalid in [ "{host}-}{service}-{datetime}"
+          for invalid in [ "{hostname}-}{service}-{datetime}"
                            "apa:"
                            ""
                            "\\"

@@ -45,13 +45,15 @@ module Codec =
       timestamp: int64
       level: LogLevel
       message: string
+      error: ErrorInfo option
       properties: IReadOnlyDictionary<string, Value> }
 
     member x.normalise(): Model.Event =
       Model.Event(x.message, None, x.timestamp * 1_000_000L,
-                         ?name = Some (PointName.parse x.logger),
-                         ?level = Some x.level,
-                         ?ctx = Some x.properties)
+                  ?name = Some (PointName.parse x.logger),
+                  ?level = Some x.level,
+                  ?fs = Some x.properties,
+                  ?error=x.error)
 
   module internal Log4JMessage =
     open System
@@ -122,19 +124,25 @@ module Codec =
       if isNull event || event.Name <> xn ns "event" then
         Result.Error (sprintf "Failed to parse XML: %s" xml)
       else
+        let error =
+          event
+            |> xe ns "throwable"
+            |> xtext
+            |> fun s -> if String.IsNullOrWhiteSpace(s) then None else Some s
+            |> Option.bind (DotNetStacktrace.tryParse)
+
         { logger = event |> xattr "logger"
           timestamp = event |> xattr "timestamp" |> tryTimestamp
           level = event |> xattr "level" |> LogLevel.ofString
           message = event |> xe ns "message" |> xtext
+          error = error
           properties =
             let thread = event |> xattr "thread"
             let ndc = event |> xe ns "NDC" |> xtext
-            let throwable = event |> xe ns "throwable" |> xtext
             (Map.empty, event |> xe ns "properties" |> xes "data")
             ||> Seq.fold foldProp
             |> if thread = "" then id else addLiteral "thread" thread
             |> if ndc = "" then id else addLiteral "NDC" ndc
-            |> if String.IsNullOrEmpty throwable then id else addLiteral "error" throwable
             :> IReadOnlyDictionary<string, Value>
         }
         |> Result.Ok
