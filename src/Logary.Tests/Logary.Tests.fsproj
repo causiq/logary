@@ -9,6 +9,7 @@
     <GenerateTailCalls>true</GenerateTailCalls>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="sample-data\opentelemetry-trace.json" />
@@ -21,6 +22,7 @@
     <Compile Include="Utils.Arbs.fs" />
     <Compile Include="Utils.Logger.fs" />
     <Compile Include="Internals.Global.fs" />
+    <Compile Include="Internals.SimpleMessageWriter.fs" />
     <Compile Include="Utils.FsCheck.fs" />
     <Compile Include="Core.Constants.fs" />
     <Compile Include="Core.DateTime.fs" />
@@ -40,12 +42,16 @@
     <None Include="Json.ref.fs" />
     <Compile Include="Json.fs" />
     <Compile Include="Targets.Baseline.fs" />
-    <Compile Include="Targets.Core.fs" />
+    <Compile Include="Targets.File.fs" />
+    <Compile Include="Targets.Diagnostics.fs" />
+    <Compile Include="Targets.TextWriter.fs" />
     <Compile Include="Configuration.Transformers.fs" />
     <Compile Include="Configuration.Config.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <ProjectReference Include="../Logary/Logary.fsproj" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.*" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

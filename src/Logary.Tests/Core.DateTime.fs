@@ -33,4 +33,12 @@ let tests =
       subject.Second |> Expect.equal "Second eq" (ts.ToDateTimeOffset().Second)
       subject.Millisecond |> Expect.equal "Millisecond eq" (ts.ToDateTimeOffset().Millisecond)
 
+    testCase "convert DateTimeOffset with timespan delta" <| fun _ ->
+      let a = DateTimeOffset(2016, 07, 02, 12, 33, 56, TimeSpan.FromHours(2.0))
+      let ts = a.asTimestamp
+      let b = ts |> DateTimeOffset.ofEpoch
+      
+      b.Ticks
+        |> Expect.equal "Should be convertible to timestamp and back, including accounting for TimeSpans" a.Ticks
+
   ] |> testLabel "logary"

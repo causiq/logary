@@ -27,8 +27,8 @@ let private runLogary shipperConf: IDisposable =
     Resource.create("Rutta", Hostname hostName :: [])
     |> Config.create
     |> Config.targets [
-        //Noop.create (Noop.empty) (PointName.ofSingle "noop")
-        //Console.create (Console.empty) (PointName.ofSingle "console")
+        //Noop.create (Noop.empty) "noop"
+        //Console.create (Console.empty) "console"
         Shipper.create shipperConf "rutta-shipper"
       ]
     |> Config.loggerLevels [ ".*", Verbose ]

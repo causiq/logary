@@ -26,6 +26,7 @@ type SimpleMessageWriter() =
           do! writer.WriteAsync(s.label.AsMemory(), ct)
           if ct.IsCancellationRequested then return ()
 
+          do! writer.WriteAsync(' ')
           do! writer.WriteAsync(s.elapsed.toGauge().ToString().AsMemory(), ct)
           if ct.IsCancellationRequested then return ()
 

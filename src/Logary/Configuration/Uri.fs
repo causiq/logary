@@ -70,7 +70,7 @@ module Uri =
         | Choice1Of2 v ->
           box v
 
-        | Choice2Of2 err ->
+        | Choice2Of2 _ ->
           Convert.ChangeType(v, typ) |> box
 
     | true, converter ->
@@ -191,7 +191,9 @@ module TargetConfig =
     [
       "aliyun",      moduleNameConfigNameAsm "AliYun"
       "applicationinsights", moduleNameConfigNameAsm "ApplicationInsights"
-      "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
+      // TO CONSIDER: re-implement literate console in Logary.Formatting
+      // "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
+      "console",     moduleNameConfigName (modu "Console") "Logary" (conf "Console")
       "elasticsearch", moduleNameConfigNameAsm "Elasticsearch"
       "elmahio",     moduleNameConfigNameAsm "ElmahIO"
       "influxdb",    moduleNameConfigNameAsm "InfluxDb"

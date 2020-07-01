@@ -141,8 +141,8 @@ module HTTP =
         .UseUrls(config.bindingsAsURLs())
         .Build()
 
-    use cts = new CancellationTokenSource()
-    start (shutdown |> Alt.afterFun cts.Cancel)
+    let cts = new CancellationTokenSource()
+    start (shutdown |> Alt.afterFun cts.Dispose)
 
     job {
       do! IVar.fill started ()

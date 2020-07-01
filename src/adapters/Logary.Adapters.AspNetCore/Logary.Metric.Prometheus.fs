@@ -91,9 +91,9 @@ type Exporter private (cts: CancellationTokenSource) =
     member x.Dispose() =
       x.stop() |> ignore
 
-  /// Runs a server with a CancellationToken.
-  [<CompiledName "Run">]
-  static member run(conf: ExporterConf, token) =
+  /// Starts a web server with a CancellationToken.
+  [<CompiledName "Start">]
+  static member start(conf: ExporterConf, token) =
     let whenGettingRoot (context: HttpContext) =
       context.Request.Path.Value.Trim('/') = ""
 
@@ -141,6 +141,7 @@ type Exporter private (cts: CancellationTokenSource) =
     let builder =
       WebHostBuilder()
         .UseKestrel(fun o -> o.AllowSynchronousIO <- false)
+        // TODO: use Logary instead of simple ASP.Net console logger
         .ConfigureLogging(fun o -> o.Services.AddLogging(fun lb -> lb.AddConsole() |> ignore) |> ignore)
         .ConfigureServices(Action<_, _> configureServices)
         .Configure(Action<_,_> configureRoutes)
@@ -151,12 +152,12 @@ type Exporter private (cts: CancellationTokenSource) =
 
     builder
       .Build()
-      .RunAsync(token)
+      .StartAsync(token)
 
   /// Starts an Exporter with a Hopac Promise<unit> to signal the shutdown.
   [<CompiledName "StartServer">]
   static member startServer(conf, cancelled: Promise<unit>): Job<Exporter> =
     let cts = new CancellationTokenSource()
     start (cancelled |> Alt.afterFun (fun () -> Exporter.tryCancel cts))
-    Job.fromUnitTask (fun () -> Exporter.run(conf, cts.Token))
+    Job.fromUnitTask (fun () -> Exporter.start(conf, cts.Token))
       |> Job.map (fun () -> new Exporter(cts))
