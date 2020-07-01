@@ -37,8 +37,8 @@
     <Compile Include="Trace.fs" />
     <Compile Include="Metric.fs" />
     <Compile Include="Codecs.fs" />
-<!--    <Compile Include="Json.fs" />-->
-    <Compile Include="Json.2.fs" />
+    <None Include="Json.ref.fs" />
+    <Compile Include="Json.fs" />
     <Compile Include="Targets.Baseline.fs" />
     <Compile Include="Targets.Core.fs" />
     <Compile Include="Configuration.Transformers.fs" />

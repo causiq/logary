@@ -267,9 +267,11 @@ module internal Impl =
     jaegerSpan.Tags <- tags
     jaegerSpan
 
-  /// When an ambient log `Message` is received, it means it is *not* carrying a `SpanData` instance in its `.context`,
-  /// and hence must be either added to an existing deferred `Span`, OR be pushed to the `ambient` `ListCache` in
-  /// the state, waiting for a `Span` to be completed and later flushed to the Jaeger client.
+  /// When an ambient EventMessage is received, it means it was NOT a SpanMessage;
+  /// and hence must be either added to an existing deferred `Span`,
+  /// OR be pushed to the `ambient` `ListCache` in the state, waiting for a `Span` to be completed and later flushed to
+  /// the Jaeger client. This is because the Jaeger client doesn't currently have a streaming mode for logs inside a
+  /// Span.
   let handleAmbientLog (state: State) (spanId: SpanId, msg: LogaryMessage, ri: RuntimeInfo): State =
     // First convert the message to a Jaeger log message
     let log = msg.getJaegerLog()
@@ -278,7 +280,8 @@ module internal Impl =
     let wasAdded =
       state.deferred.tryModify(spanId, fun (span, ack) ->
         ri.logger.verbose("handleAmbientLog found deferred Span={spanId}, saving `Log`:s into it", fun m ->
-                          m.spanId <- Some spanId)
+                          m.parentSpanId <- Some spanId)
+        // TODO: verify we don't happen to add these twice with enableStreaming() (the default)
         span.Logs.Add log
         span, ack)
 
@@ -287,7 +290,7 @@ module internal Impl =
     // OR the `ambient` `Log` values will be garbage collected.
     if not wasAdded then
       ri.logger.verbose ("handleAmbientLog did not find deferred Span={spanId}, enqueueing Log as ambient", fun m ->
-        m.spanId <- Some spanId)
+        m.parentSpanId <- Some spanId)
       state.ambient.enqueue(spanId, log)
 
     state
@@ -363,8 +366,8 @@ module internal Impl =
                   handleSpan api.runtime (span, asTags attrs, ack) state
                 | Result.Error () ->
                   state
-              | m when Option.isSome m.spanId ->
-                handleAmbientLog state (m.spanId.Value, message, api.runtime)
+              | m when Option.isSome m.parentSpanId ->
+                handleAmbientLog state (m.parentSpanId.Value, message, api.runtime)
               | _ ->
                 state
 
