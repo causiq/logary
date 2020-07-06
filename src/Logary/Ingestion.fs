@@ -62,15 +62,23 @@ with
   member x.withScheme s =
     let (Binding (_, n, p)) = x
     Binding (Scheme s, n, p)
+
   member x.nicAndPort =
     let (Binding (_, NIC n, Port p)) = x
     sprintf "%s:%i" n p
+
   member x.asEndpoint =
     let (Binding (_, NIC n, Port p)) = x
     IPEndPoint(IPAddress.Parse(n), int p)
+
   override x.ToString() =
     let (Binding (Scheme s, NIC n, Port p)) = x
     sprintf "%s://%s:%i" s n p
+
+  interface IValueFormattable with
+    member x.toKeyValues baseKey =
+      Choice1Of2(KeyValuePair<_,_>(baseKey, Value.Str (x.ToString())))
+
   static member create(scheme, nic, port) =
     Binding (scheme, NIC nic, Port port)
   static member create(scheme, nic, port) =
@@ -82,6 +90,7 @@ with
   member x.Length =
     let (BindingList bs) = x
     bs.Length
+
   member x.toCommaSeparatedString() =
     let (BindingList bs) = x in bs
       |> List.map (fun b -> b.ToString())

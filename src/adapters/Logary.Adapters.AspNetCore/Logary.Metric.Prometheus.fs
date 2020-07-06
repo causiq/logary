@@ -8,6 +8,8 @@ open System.Threading
 open System.Threading.Tasks
 open FSharp.Control.Tasks.Builders
 open Hopac
+open Logary
+open Logary.Configuration
 open Logary.Ingestion
 open Logary.Metric
 open Microsoft.AspNetCore.Builder
@@ -19,6 +21,7 @@ open Microsoft.Extensions.DependencyInjection
 
 type ExporterConf =
   { nameMetric: string -> string
+    logary: LogManager
     metricRegistry: MetricRegistry
     configureApp: IApplicationBuilder -> unit
     configureServices: IServiceCollection -> unit
@@ -27,12 +30,13 @@ type ExporterConf =
     urlPath: string
   }
 
-  static member create(registry, ?urlPath, ?binding, ?certificate, ?configureApp, ?configureServices) =
+  static member create(logary: LogManager, ?registry, ?urlPath, ?binding, ?certificate, ?configureApp, ?configureServices) =
     let (Binding (_, nic, port)) = binding |> Option.defaultValue (Binding (Scheme "http", NIC "+", Port 9121us))
     let scheme = if certificate.IsSome then Scheme "https" else Scheme "http"
     let binding = Binding (scheme, nic, port)
     { nameMetric = defaultMetricNamer
-      metricRegistry = registry
+      logary = logary
+      metricRegistry = defaultArg registry logary.metrics
       configureApp = defaultArg configureApp ignore
       configureServices = defaultArg configureServices ignore
       binding = binding
@@ -141,14 +145,16 @@ type Exporter private (cts: CancellationTokenSource) =
     let builder =
       WebHostBuilder()
         .UseKestrel(fun o -> o.AllowSynchronousIO <- false)
-        // TODO: use Logary instead of simple ASP.Net console logger
-        .ConfigureLogging(fun o -> o.Services.AddLogging(fun lb -> lb.AddConsole() |> ignore) |> ignore)
+        .UseLogary(conf.logary)
         .ConfigureServices(Action<_, _> configureServices)
         .Configure(Action<_,_> configureRoutes)
 
     let builder =
       if conf.certificate.IsNone then builder.UseUrls(conf.binding.ToString())
       else builder
+
+    let logger = conf.logary.getLogger "Logary.Metric.Prometheus"
+    logger.info("Starting health web server at {binding}", fun m -> m.setField("binding", conf.binding))
 
     builder
       .Build()

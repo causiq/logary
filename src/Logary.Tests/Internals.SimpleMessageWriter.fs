@@ -58,6 +58,9 @@ let tests =
 
         result
           |> Expect.stringContains "Should contain the level of the event in lowercase characters" "info"
+
+        result
+          |> Expect.stringContains "Should have 'monetaryValue' contents" "45.00 USD"
       }
     ]
 

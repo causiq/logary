@@ -24,10 +24,8 @@ let create conf name =
   TextWriter.create
     { writer = conf.writer
       output = System.Console.Out
-      error  = System.Console.Error
       flush  = false
-      includeResource = true
-      useErrorFor     = Error }
+      includeResource = false }
     name
 
 /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )

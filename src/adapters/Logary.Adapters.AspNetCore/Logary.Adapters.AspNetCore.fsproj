@@ -15,11 +15,11 @@
     <Compile Include="Internal.SystemEx.fs" />
     <Compile Include="Propagation.HttpContext.fs" />
     <Compile Include="Logary.Trace.fs" />
-    <Compile Include="Logary.Metric.Prometheus.fs" />
     <Compile Include="LogaryEx.fs" />
     <Compile Include="Middleware.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Configuration.fs" />
+    <Compile Include="Logary.Metric.Prometheus.fs" />
   </ItemGroup>
 
   <ItemGroup>

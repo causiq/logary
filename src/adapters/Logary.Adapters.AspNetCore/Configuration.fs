@@ -8,6 +8,7 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open System
 open System.Runtime.CompilerServices
+open Microsoft.Extensions.Logging
 
 /// Adds the Logary middlewares
 type LogaryStartupFilter() =
@@ -50,7 +51,9 @@ module IHostBuilderEx =
   [<Extension; CompiledName "UseLogary">]
   let useLogary (builder: IHostBuilder, logary: LogManager) =
      let cb = Action<_>(addLogaryServices logary)
-     builder.ConfigureServices(cb)
+     builder
+       .ConfigureLogging(Action<ILoggingBuilder> (fun logging -> logging.ClearProviders() |> ignore))
+       .ConfigureServices(cb)
 
   type IHostBuilder with
     member x.UseLogary(logary: LogManager) = useLogary (x, logary)
@@ -64,7 +67,10 @@ module IWebHostBuilderEx =
   [<Extension; CompiledName "UseLogary">]
   let useLogary (builder: IWebHostBuilder, logary: LogManager) =
      let cb = Action<_>(addLogaryServices logary)
-     builder.ConfigureServices(cb)
+     builder
+       .SuppressStatusMessages(true)
+       .ConfigureLogging(Action<ILoggingBuilder> (fun logging -> logging.ClearProviders() |> ignore))
+       .ConfigureServices(cb)
 
   type IWebHostBuilder with
     member x.UseLogary(logary: LogManager) = useLogary (x, logary)

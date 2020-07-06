@@ -1,7 +1,6 @@
 namespace Logary.Model
 
 open System.Collections.Generic
-open System.Diagnostics
 open Logary
 open Logary.Internals
 open Logary.Trace

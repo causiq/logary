@@ -120,6 +120,7 @@
     <Compile Include="Json.Encode.fs" />
     <Compile Include="Json.Decode.fs" />
     <Compile Include="Json.MessageWriter.fs" />
+    <None Include="MessageWriter.fsx" />
     <!-- Below: formatting, serialisation -->
     <Compile Include="Ingestion.fs" />
     <Compile Include="Codecs.fs" />

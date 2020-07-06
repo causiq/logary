@@ -16,24 +16,17 @@ type TextWriterConf =
     writer: MessageWriter
     /// The non-error text writer to output to
     output: TextWriter
-    /// The error text writer to output to
-    error: TextWriter
     /// Whether to flush text writer after each line
     flush: bool
     /// Whether to add Logary's RuntimeInfo's Resource value to the context.
-    includeResource: bool
-    /// The log level that is considered 'important' enough to write to the
-    /// error text writer
-    useErrorFor: LogLevel }
+    includeResource: bool }
 
   [<CompiledName "Create">]
-  static member create(output, error, ?formatter: MessageWriter) =
+  static member create(output, ?formatter: MessageWriter, ?flush, ?includeResource) =
     { writer = defaultArg formatter defaultMessageFormat
       output = output
-      error  = error
-      flush  = false
-      includeResource = true
-      useErrorFor     = Error }
+      flush  = defaultArg flush false
+      includeResource = defaultArg includeResource false }
 
 module internal Impl =
 
@@ -44,28 +37,22 @@ module internal Impl =
       Alt.choose [
         api.shutdownCh ^=> fun ack ->
           conf.output.Dispose()
-
-          if not (obj.ReferenceEquals(conf.output, conf.error)) then
-            conf.error.Dispose()
-
           ack *<= ()
 
         RingBuffer.take api.requests ^=> function
           | Log (message, ack) ->
             job {
-              let writer = if message.level < conf.useErrorFor then conf.output else conf.error
-
               let message =
                 if conf.includeResource then
                   message.cloneAndUpdate(fun m -> m.setContextValues(api.runtime.resource.asMap()))
                 else
                   message
 
-              let xJ = Alt.fromUnitTask (fun ct -> conf.writer.write(writer, message, ct)) :> Job<_>
+              let xJ = Alt.fromUnitTask (fun ct -> conf.writer.write(conf.output, message, ct)) :> Job<_>
               do! withConsoleLock xJ
 
               if conf.flush then
-                do! Job.fromUnitTask (fun _ -> writer.FlushAsync())
+                do! Job.fromUnitTask (fun _ -> conf.output.FlushAsync())
 
               do! ack *<= ()
               return! loop ()
@@ -73,7 +60,6 @@ module internal Impl =
 
           | Flush (ack, _) ->
             Job.fromUnitTask conf.output.FlushAsync
-            >>=. Job.fromUnitTask conf.error.FlushAsync
             >>= IVar.fill ack
             >>= loop
 
@@ -87,11 +73,14 @@ let create (conf: TextWriterConf) name =
 
 /// Use with LogaryFactory.New( s => s.Target<TextWriter.Builder>() )
 type Builder(conf, callParent: ParentCallback<Builder>) =
-  member x.WriteTo(out : #TextWriter, err : #TextWriter) =
-    ! (callParent <| Builder({ conf with output = out; error = err }, callParent))
+  member x.WriteTo(out : #TextWriter) =
+    ! (callParent <| Builder({ conf with output = out }, callParent))
+
+  member x.IncludeResource() =
+    callParent (Builder({ conf with includeResource = true }, callParent))
 
   new(callParent: ParentCallback<_>) =
-    Builder(TextWriterConf.create(System.Console.Out, System.Console.Error), callParent)
+    Builder(TextWriterConf.create(System.Console.Out), callParent)
 
   interface SpecificTargetConf with
     member x.Build name = create conf name

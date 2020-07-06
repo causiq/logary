@@ -1,7 +1,7 @@
 namespace Logary.Services.Rutta
 
+open Logary
 open Logary.Ingestion
-open Logary.Metric
 open Logary.Metric.Prometheus
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
@@ -26,10 +26,10 @@ module Health =
   module App =
     let api = GET >=> route "/health" >=> warbler (fun _ -> OK (healthMessage ()))
 
-  let startServerInner (metrics: MetricRegistry) (binding: Binding) =
+  let startServerInner (internalLogary: LogManager) (binding: Binding) =
     let useGiraffe (x: IApplicationBuilder) = x.UseGiraffe App.api
     let addGiraffe (x: IServiceCollection) = x.AddGiraffe() |> ignore
-    let conf = ExporterConf.create(metrics, binding=binding, configureApp=useGiraffe, configureServices=addGiraffe)
+    let conf = ExporterConf.create(internalLogary, binding=binding, configureApp=useGiraffe, configureServices=addGiraffe)
     Exporter.startServer(conf, IVar ())
       |> run
       :> IDisposable

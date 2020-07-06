@@ -16,6 +16,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.IO
+open Microsoft.Extensions.Logging
 
 type HTTPConfig =
   { ilogger: Logger

@@ -145,7 +145,6 @@ module Config =
 
     let middleware =
       [|  yield! conf.middleware
-          yield Middleware.setResource conf.resource
           yield Middleware.metricsToRegistry conf.metricRegistry |]
 
     let config =

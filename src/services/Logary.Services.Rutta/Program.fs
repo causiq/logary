@@ -5,6 +5,8 @@ open System
 open System.Configuration
 open System.Threading
 open System.Runtime.InteropServices
+open Logary.Configuration
+open Logary.Targets
 open Topshelf
 open Logary
 open Logary.Internals
@@ -64,8 +66,9 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
     0
   else
     let ilevel = if results.Contains Args.Verbose then LogLevel.Verbose else LogLevel.Info
+    let internalLogary = Config.create(Model.Resource.create("rutta")) |> Config.target (Console.create Console.empty "console") |> Config.build |> Hopac.Hopac.run
     use health = results.TryPostProcessResult(Args.Health, Parsers.bindingString)
-                 |> Health.startServer (Global.getMetricRegistry ())
+                 |> Health.startServer internalLogary
     match results.TryGetSubCommand() with
     | Some (Proxy cmd) ->
       let subParser = parser.GetSubCommandParser Proxy

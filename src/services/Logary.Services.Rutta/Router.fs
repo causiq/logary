@@ -142,7 +142,7 @@ let udpBind (cancelled, ilogger: Logger, logary) (bindings: BindingList) (cname:
 // HTTP
 let httpBind cors (cancelled, ilogger: Logger, logary: LogManager) (bindings: BindingList) (cname: string, codec) =
   ilogger.info ("Spawning router with {bindings} in {mode} mode, accepting {codec}.", fun m ->
-    m.setField("binding", bindings)
+    m.setField("bindings", bindings)
     m.setField("mode", HTTP.ToString())
     m.setField("codec", cname))
 

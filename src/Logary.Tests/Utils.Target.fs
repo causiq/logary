@@ -94,21 +94,21 @@ let finalise target =
 let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (_ -> Job<unit>) -> #Job<unit>) =
   let logAndWait message =
     job {
-      do! logger.infoWithBP (Logging.Message.eventX (sprintf "Sending message to Target(%s)" targetApi.name))
+      do! logger.verboseWithBP (Logging.Message.eventX (sprintf "Sending message to Target(%s)" targetApi.name))
       let! res = Target.log Duration.Zero targetApi message
       match res with
       | Ok ack ->
-        do! logger.infoWithBP (Logging.Message.eventX (sprintf "Waiting for Target(%s) to ACK message" targetApi.name))
+        do! logger.verboseWithBP (Logging.Message.eventX (sprintf "Waiting for Target(%s) to ACK message" targetApi.name))
         do! ack
-        do! logger.infoWithBP (Logging.Message.eventX (sprintf "Target(%s) ACKed message" targetApi.name))
+        do! logger.verboseWithBP (Logging.Message.eventX (sprintf "Target(%s) ACKed message" targetApi.name))
       | Result.Error e ->
         failtestf "%A" e
     }
   let finaliseJob =
     job {
-      do! logger.infoWithBP (Logging.Message.eventX "Finalising target")
+      do! logger.verboseWithBP (Logging.Message.eventX "Finalising target")
       do! finalise targetApi
-      do! logger.infoWithBP (Logging.Message.eventX "Target finalised!")
+      do! logger.verboseWithBP (Logging.Message.eventX "Target finalised!")
     }
 
   Job.tryFinallyJob (logCallBack logAndWait) finaliseJob
