@@ -16,11 +16,15 @@ type Currency =
   | EUR
   | Other of name: string
   static member SEK = Other "SEK"
+
   interface IFormattable with
     member x.ToString(format, _) = // "G" or "c" format
       match if String.IsNullOrWhiteSpace format then "G" else format with
       | "G" -> match x with | USD -> "USD" | EUR -> "EUR" | Other o -> o
       | "c" | _ -> match x with | USD -> "$" | EUR -> "€" | Other o -> o
+
+  override x.ToString() =
+    (x :> IFormattable).ToString("G", Culture.invariant)
 
 /// A unit type
 [<RequireQualifiedAccess>]
@@ -225,10 +229,12 @@ module U =
     | U.Moles
     | U.Candelas
     | U.Watts
-    | U.Hertz
-    | U.Currency _ ->
-      //printfn "scaling value=%f, units=%A" value units
+    | U.Hertz ->
       calculate (scaleBy10 units) value
+    | U.Currency c ->
+      //printfn "scaling value=%f, units=%A" value units
+      let v, _ = calculate (scaleBy10 units) value
+      v, c.ToString()
     | U.Offset _
     | U.Mul (_, _)
     | U.Pow (_, _)
@@ -400,7 +406,9 @@ with
   override x.ToString() =
     let (Gauge (v, u)) = x
     let gv, gu = U.scale u v.asFloat
-    sprintf "%.2f %s" gv gu
+    match u with
+    | U.Currency _ -> sprintf "%s %.2f" gu gv
+    | _ -> sprintf "%.2f %s" gv gu
 
   static member ofNanos (ns: Value) =
     Gauge (ns, U.Scaled (U.Seconds, float Constants.NanosPerSecond))

@@ -134,7 +134,7 @@ module JsonFailure =
         | [e] -> sprintf "Found 1 error:\n  %s" <| e
         | errs ->
             let sb = System.Text.StringBuilder()
-            sb.AppendLine(sprintf "Found %i errors:" (List.length errs)) |> ignore
+            sb.AppendLine(sprintf "Found %i errors:" errs.Length) |> ignore
             errs |> List.iter (fun e -> sb.Append("  ").AppendLine(e) |> ignore)
             sb.ToString()
 

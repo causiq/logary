@@ -1,6 +1,7 @@
 namespace Logary.Internals
 
 open Hopac
+open Logary
 open Logary.Internals
 open Logary.Model
 
@@ -24,3 +25,25 @@ type TargetAPI =
   /// A channel that the target needs to select on and then ACK once the target
   /// has fully shut down.
   abstract shutdownCh: Ch<IVar<unit>>
+
+module Target =
+
+  open Hopac.Infixes
+
+  /// Adapts the logger to use as a target. In turn used by ILogger.External, when logging to an external Logary instance.
+  let ofLogger (logger: Logger): TargetAPI -> Job<unit> =
+    fun api ->
+      let rec loop () =
+        Alt.choose [
+          api.shutdownCh ^=> fun ack -> IVar.fill ack ()
+          RingBuffer.take api.requests ^=> function
+            | Log (message, ack) ->
+              logger.logWithAck(true, message) >>= function
+                | Result.Ok _ ->
+                  IVar.fill ack () >>= loop
+                | Result.Error error ->
+                  IVar.fillFailure ack (exn (error.ckind.ToString())) >>= loop
+            | Flush (ack, _) ->
+              IVar.fill ack () >>= loop
+        ]
+      loop () :> Job<unit>

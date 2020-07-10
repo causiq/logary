@@ -6,9 +6,10 @@ open FSharp.Control.Tasks.Builders
 open System
 open Logary
 open Logary.Internals
+open Logary.YoLo
 open NodaTime
 
-module Formatting =
+module SimpleFormatting =
 
   let private varRegex = Regex("\\{([a-zA-Z._-]+)\\}", RegexOptions.Compiled ||| RegexOptions.CultureInvariant ||| RegexOptions.IgnoreCase)
 
@@ -61,7 +62,7 @@ module Formatting =
         usedVars |> Seq.iter (used.Add >> ignore)
         yield "evt", templated
         if e.monetaryValue.IsSome then
-          yield "money", e.monetaryValue.ToString()
+          yield "money", e.monetaryValue.Value.ToString()
 
       | :? SpanMessage as s ->
         yield "lbl", s.label
@@ -89,16 +90,23 @@ module Formatting =
           |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToString())
           |> Seq.append (message.context |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToString()))
           |> Seq.filter (fun (k, _) -> not (used.Contains k))
+          |> Seq.filter (fun (k, v) -> not (String.IsNullOrWhiteSpace k) && not (String.IsNullOrWhiteSpace v))
+
+      yield "name", message.name.ToString()
+      yield "type", message.kind.ToString()
     }
 
-type SimpleMessageWriter(?tokeniser) =
+
+open SimpleFormatting
+
+type SimpleMessageWriter() =
   interface MessageWriter with
     member x.write(writer, message, ct) =
       task {
-        let tokens = Formatting.tokenise message
+        let tokens = tokenise message
         let mutable first = true
         for token in tokens do
-          let escaped = Formatting.kv token
+          let escaped = kv token
           if first then
             do! writer.WriteAsync(escaped.PadRight(10).AsMemory(), ct)
             first <- false

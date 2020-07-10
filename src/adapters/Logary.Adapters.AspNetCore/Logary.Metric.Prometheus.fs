@@ -15,7 +15,6 @@ open Logary.Metric
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
-open Microsoft.Extensions.Logging
 open Microsoft.AspNetCore.Server.Kestrel.Core
 open Microsoft.Extensions.DependencyInjection
 

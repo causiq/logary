@@ -3,6 +3,7 @@
 namespace Logary
 
 open Hopac
+open Hopac.Infixes
 open Logary.Internals
 
 /// A target configuration is the 'reference' to the to-be-run target while it
@@ -20,6 +21,15 @@ type TargetConf =
 
   override x.ToString() =
     sprintf "TargetConf(%s)" x.name
+
+  static member ofLogger (logger: Logger) =
+    { name=logger.name.ToString()
+      rules=[ Rule.empty ]
+      bufferSize=1us
+      policy=Policy.terminate
+      middleware=[]
+      server=Target.ofLogger logger
+    }
 
 module TargetConf =
   let create policy bufferSize server name: TargetConf =

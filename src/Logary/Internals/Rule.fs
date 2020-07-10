@@ -51,6 +51,7 @@ type Rule =
 module Rule =
   let private allPaths = Regex(".*", RegexOptions.Compiled)
 
+  /// An empty rule that accepts all input
   let empty =
     { path = allPaths
       acceptIf = fun _ -> true

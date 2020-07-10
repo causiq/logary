@@ -1,32 +1,37 @@
 /// The console Target for Logary
 module Logary.Targets.Console
 
-open Logary
+open System.IO
 open Logary.Configuration.Target
 open Logary.Internals
 
 /// Console configuration structure.
 type ConsoleConf =
-  { writer: MessageWriter }
-
+  { writer: MessageWriter
+    output: TextWriter
+    flush: bool
+    includeResource: bool }
+  member x.toTextWriterConf() =
+    { TextWriter.writer = x.writer
+      TextWriter.output = x.output
+      TextWriter.flush = x.flush
+      TextWriter.includeResource = x.includeResource }
   [<CompiledName "Create">]
-  static member create writer =
-    { writer = writer }
+  static member create(writer, ?output, ?flush, ?includeResource) =
+    { writer = writer
+      output = defaultArg output System.Console.Out
+      flush = defaultArg flush false
+      includeResource = defaultArg includeResource false }
 
-let defaultMessageFormat = SimpleMessageWriter() :> MessageWriter
+let defaultMessageWriter = SimpleMessageWriter() :> MessageWriter
 
 /// Default console target configuration.
 let empty =
-  ConsoleConf.create defaultMessageFormat
+  ConsoleConf.create defaultMessageWriter
 
 [<CompiledName "Create">]
-let create conf name =
-  TextWriter.create
-    { writer = conf.writer
-      output = System.Console.Out
-      flush  = false
-      includeResource = false }
-    name
+let create (conf: ConsoleConf) name =
+  TextWriter.create (conf.toTextWriterConf()) name
 
 /// Use with LogaryFactory.New( s => s.Target<Console.Builder>() )
 type Builder(conf, callParent: ParentCallback<Builder>) =

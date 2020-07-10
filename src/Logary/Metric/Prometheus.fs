@@ -157,7 +157,7 @@ let writeMetric (writer: TextWriter, nameMetric: string -> string) ((basicInfo, 
   task {
     for metric in metrics do
       if not (writeHelp.IsValueCreated) then do! writeHelp.Value
-      if metric.unit.name.IsSome then do! writer.WriteLineAsync(sprintf "# Unit: %s" metric.unit.name.Value)
+      if metric.unit.name.IsSome then do! writer.WriteLineAsync(sprintf "# UNIT %s" metric.unit.name.Value)
 
       match metric with
       | Gauge gauge ->

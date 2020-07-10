@@ -1,5 +1,6 @@
 namespace Logary
 
+open System
 open System.Diagnostics
 open System.Globalization
 open Logary.Metric
@@ -23,7 +24,8 @@ module RequestInfo =
         |> Option.defaultValue ""
 
     let add key value =
-      labels <- labels |> Map.add key value
+      if not (String.IsNullOrWhiteSpace key) && not (String.IsNullOrWhiteSpace value) then
+        labels <- labels |> Map.add key value
 
     for label in conf.labelNames do
       match label with
@@ -93,7 +95,6 @@ type CaptureRouteDataMiddleware(next: RequestDelegate) =
 
     if isNull actual || actual.Values.Count <= 0 then next.Invoke ctx else
 
-    // TODO: check what's in here...
     let captured = CapturedRouteDataFeature()
 
     for KeyValue (key, value) in actual.Values do

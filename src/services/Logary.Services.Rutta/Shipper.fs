@@ -3,13 +3,11 @@ module Logary.Services.Rutta.Shipper
 open System
 open Hopac
 open Logary
-open Logary.Model
-open Logary.Targets
 open Logary.Configuration
 open Logary.Targets.Shipper
 
-let private runLogary shipperConf: IDisposable =
-  let hostName = System.Net.Dns.GetHostName()
+let private runLogary (internalLogary: LogManager) shipperConf: IDisposable =
+  let ilogger = internalLogary.getLogger "Logary.Rutta.Shipper"
 
   //let systemMetrics =
     //let sys = WinPerfCounters.systemMetrics (PointName.parse "sys")
@@ -24,25 +22,25 @@ let private runLogary shipperConf: IDisposable =
   //  ]
 
   let logary =
-    Resource.create("Rutta", Hostname hostName :: [])
+    internalLogary.runtimeInfo.resource
     |> Config.create
     |> Config.targets [
         //Noop.create (Noop.empty) "noop"
         //Console.create (Console.empty) "console"
-        Shipper.create shipperConf "rutta-shipper"
+        create shipperConf "rutta-shipper"
       ]
-    |> Config.loggerLevels [ ".*", Verbose ]
     //|> Config.processing processing
-    |> Config.ilogger (ILogger.Console Debug)
-    |> Config.build
-    |> run
+    |> Config.loggerLevels [ ".*", Verbose ]
+    |> Config.disableGlobals
+    |> Config.ilogger (ILogger.External ilogger)
+    |> Config.buildAndRun
 
   { new IDisposable with member x.Dispose () = run (logary.shutdown()) }
 
-let internal pushTo endpoint =
+let internal pushTo internalLogary endpoint =
   printfn "%s" "spawning shipper in PUSH mode"
-  runLogary (ShipperConf.createPush endpoint)
+  runLogary internalLogary (ShipperConf.createPush endpoint)
 
-let internal pubTo endpoint =
+let internal pubTo internalLogary endpoint =
   printfn "%s" "spawning shipper in PUB mode"
-  runLogary (ShipperConf.createPub endpoint)
+  runLogary internalLogary (ShipperConf.createPub endpoint)

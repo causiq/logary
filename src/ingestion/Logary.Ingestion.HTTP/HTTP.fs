@@ -1,5 +1,7 @@
 ﻿namespace Logary.Ingestion.HTTP
 
+open System
+open System.Buffers
 open System.Text
 open System.Threading
 open Hopac
@@ -16,11 +18,11 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.IO
-open Microsoft.Extensions.Logging
 
 type HTTPConfig =
   { ilogger: Logger
-    logary: LogManager
+    internalLogary: LogManager
+    liveLogary: LogManager
     cancelled: Promise<unit>
     rootPath: string
     bindings: BindingList
@@ -46,8 +48,10 @@ module internal Impl =
   let onSuccess: HttpHandler =
     setStatusCode 201 >=> json true
 
-  let onError: string -> HttpHandler =
-    Json.String >> Json.format >> BAD_REQUEST
+  let onError (error: string): HttpHandler =
+    Json.String error
+      |> Json.format
+      |> BAD_REQUEST
 
   /// https://github.com/Microsoft/Microsoft.IO.RecyclableMemoryStream
   let private manager = RecyclableMemoryStreamManager(ThrowExceptionOnToArray = true)
@@ -59,7 +63,8 @@ module internal Impl =
         use ms = manager.GetStream "Logary.Ingestion.HTTP.ingestWith"
         try
           do! ctx.Request.Body.CopyToAsync(ms)
-          let input = Ingested.ofBytes (ms.GetBuffer())
+          let ros = ReadOnlySequence(ms.GetBuffer(), 0, int <| ms.Length)
+          let input = Ingested.ofReadOnlySeq ros
           return! Job.ToTask (ingest input)
         finally
           ms.Dispose()
@@ -80,10 +85,11 @@ module internal Impl =
     cts
 
 type HTTPConfig with
-  static member create(rootPath, logary, ilogger, ?cancelled: Promise<unit>, ?bindings, ?onSuccess, ?onError, ?corsConfig) =
+  static member create(rootPath, ilogger, internalLogary, liveLogary, ?cancelled: Promise<unit>, ?bindings, ?onSuccess, ?onError, ?corsConfig) =
     { rootPath = rootPath
-      logary = logary
       ilogger = ilogger
+      internalLogary = internalLogary
+      liveLogary = liveLogary
       bindings =
         bindings
           |> Option.defaultWith (fun () ->
@@ -97,7 +103,6 @@ type HTTPConfig with
 
 module HTTP =
   open Impl
-  open System
 
   let api (config: HTTPConfig) ingest: HttpHandler =
     setHttpHeader "content-type" "application/json; charset=utf-8" >=> choose [
@@ -111,7 +116,7 @@ module HTTP =
       POST
         >=> route config.rootPath
         >=> API.withOrigin config.corsConfig (fun ao -> ao.asHttpHandler)
-        >=> Impl.ingestWith (config.onSuccess, config.onError) ingest
+        >=> ingestWith (config.onSuccess, config.onError) ingest
     ]
 
   let internal errorHandler (logger: Logger) (ex: Exception) _ =
@@ -136,7 +141,7 @@ module HTTP =
     let host =
       WebHostBuilder()
         .UseKestrel(fun o -> o.AllowSynchronousIO <- false)
-        .UseLogary(config.logary)
+        .UseLogary(config.internalLogary)
         .ConfigureServices(configureServices)
         .Configure(Action<_> (configureApp (config, ingest)))
         .UseUrls(config.bindingsAsURLs())

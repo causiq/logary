@@ -1,6 +1,7 @@
 namespace Logary.Metric
 
 open System
+open System.Diagnostics
 open Logary
 
 [<Struct>]
@@ -11,7 +12,8 @@ type HistogramConf =
     member x.conf = x.metricConf
     member x.build _ labels = Histogram(x, labels) :> IHistogram
 
-and Histogram(conf, labels) =
+
+and [<DebuggerDisplay("{debuggerDisplay,nq}")>] Histogram(conf, labels: Map<string, string>) =
   do
     let containsLe = conf.metricConf.labelNames |> Array.contains "le"
     if containsLe then failwith "Histogram cannot have a label named 'le'"
@@ -23,6 +25,13 @@ and Histogram(conf, labels) =
     else Array.append originSortedBucket [| Double.PositiveInfinity |]
 
   let sortedBucketCounters = sortedBuckets |> Seq.map(fun upperBound -> upperBound, DoubleAdder()) |> Map.ofSeq
+
+  member internal x.debuggerDisplay
+    with get() =
+      let labels = labels |> Seq.map (fun (KeyValue (k, v)) -> sprintf "%s=%s" k v) |> String.concat " "
+      let unitName = conf.metricConf.unit.name |> Option.defaultValue "missing"
+      // TO CONSIDER: x.explore() and print e.g. _count (or +Inf bucket, which equals this value)
+      sprintf "{%s} unit=%s #buckets=%i (Histogram)" unitName labels conf.buckets.Length
 
   interface IHistogram with
     member x.observe value =

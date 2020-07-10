@@ -31,11 +31,11 @@ type Strings =
       let characterSpan = stackalloc<char> strLenEst
 
       for memory in slice do
-          preProcessedBytes <- preProcessedBytes + memory.Length
-          let isLast = preProcessedBytes = int slice.Length
-          let emptyCharSlice = characterSpan.Slice(processedCharacters, characterSpan.Length - processedCharacters)
-          let charCount = decoder.GetChars(memory.Span, emptyCharSlice, isLast)
-          processedCharacters <- processedCharacters + charCount
+        preProcessedBytes <- preProcessedBytes + memory.Length
+        let isLast = preProcessedBytes = int slice.Length
+        let emptyCharSlice = characterSpan.Slice(processedCharacters, characterSpan.Length - processedCharacters)
+        let charCount = decoder.GetChars(memory.Span, emptyCharSlice, isLast)
+        processedCharacters <- processedCharacters + charCount
 
       let finalCharacters = characterSpan.Slice(0, processedCharacters)
       new string(Span.op_Implicit finalCharacters)

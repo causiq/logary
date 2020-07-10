@@ -7,9 +7,9 @@ open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Model
 
-type Codec = Ingested -> Result<Model.LogaryMessageBase[], string>
+type Codec = Ingested -> Result<LogaryMessageBase[], string>
 
-type Codec<'err> = Ingested -> Result<Model.LogaryMessageBase[], 'err>
+type Codec<'err> = Ingested -> Result<LogaryMessageBase[], 'err>
 
 module Codec =
   /// A codec that reads each input as a bag-of-fields to add to a message. Uses
@@ -35,7 +35,7 @@ module Codec =
     fun input ->
       input.utf8String()
         |> Model.Event
-        :> Model.LogaryMessageBase
+        :> LogaryMessageBase
         |> Array.singleton
         |> Ok
 

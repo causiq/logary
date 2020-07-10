@@ -17,8 +17,9 @@ open NodaTime
 /// Specifies the internal logger targets for Logary.
 [<RequireQualifiedAccess>]
 type ILogger =
-  | Console of minLevel:LogLevel
-  | Targets of config:TargetConf list
+  | Console of minLevel: LogLevel
+  | Targets of config: TargetConf list
+  | External of logger: Logger
 
 module Config =
 
@@ -83,13 +84,16 @@ module Config =
   let timestamp getTimestamp (conf: T) =
     { conf with getTimestamp = getTimestamp }
 
-  let consoleSemaphore getConsoleSemaphore (conf: T) =
-    { conf with consoleLock = getConsoleSemaphore }
+  let consoleLock lockD (conf: T) =
+    { conf with consoleLock = lockD }
 
   let middleware mid (conf: T) =
     { conf with middleware = mid :: conf.middleware }
 
-  let ilogger ilogger (conf: T) =
+  let ilogger (ilogger: ILogger) (conf: T) =
+    match ilogger with
+    | ILogger.External ext -> ext.info (sprintf "Will be delegating all logs from %s to %O" conf.resource.service ext.name)
+    | _ -> ()
     { conf with ilogger = ilogger }
 
   let processing processor (conf: T) =
@@ -123,6 +127,9 @@ module Config =
       let target = Console.create Console.empty "internal"
       let rule = Rule.empty |> Rule.setMinLevel minLevel
       [ TargetConf.setRule rule target ]
+
+    | ILogger.External external ->
+      [ TargetConf.ofLogger external ]
 
     | ILogger.Targets conf ->
       conf

@@ -13,7 +13,7 @@ let AspNetCoreLabels = [
 ]
 
 let http_server_request_count =
-  GaugeConf.create("http_client_request_count",
+  GaugeConf.create("http_server_request_count",
                    "A counter of the ASP.Net Core server requests",
                    U.Seconds,
                    AspNetCoreLabels)

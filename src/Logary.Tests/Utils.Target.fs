@@ -9,6 +9,7 @@ open Logary.Model
 open NodaTime
 open Expecto
 open Expecto.Logging
+open Expecto.Logging.Message
 
 let internal logger = Log.create "Logary.Tests.Utils"
 
@@ -26,22 +27,22 @@ open Logary.Internals
 open Logary.Targets
 open Logary.Configuration
 
-let clearStream (s: System.IO.StringWriter) =
+let clearStream (s: StringWriter) =
   let sb = s.GetStringBuilder ()
   let str = string sb
   sb.Clear () |> ignore
   str
 
 let buildTextWriterTarget name =
-  let out, error = new StringWriter(), new StringWriter()
-  let writerConf = TextWriter.TextWriterConf.create(out, error, JSONMessageWriter(JsonFormattingOptions.Pretty))
+  let out = new StringWriter()
+  let writerConf = TextWriter.TextWriterConf.create(out, JSONMessageWriter(JsonFormattingOptions.Pretty))
   let twTargetConf = TextWriter.create writerConf name
-  out, error, twTargetConf
+  out, twTargetConf
 
 let buildLogManagerWith configFac = job {
   let svc = Resource.create("svc", "localhost")
   let tname = "4test"
-  let out, error, twTargetConf = buildTextWriterTarget tname
+  let out, twTargetConf = buildTextWriterTarget tname
   // let iloggerConf = ILogger.Targets [ twTargetConf ]
 
   let! logm =
@@ -51,7 +52,7 @@ let buildLogManagerWith configFac = job {
     |> Config.disableGlobals
     |> configFac
     |> Config.build
-  return logm, out, error
+  return logm, out
 }
 
 let buildLogManager () = buildLogManagerWith id
@@ -76,8 +77,8 @@ module Internals =
 let finaliseJob target =
   Alt.choose [
     Target.shutdown target
-    |> Alt.afterJob id
-    |> Alt.afterFun Internals.Success
+      |> Alt.afterJob id
+      |> Alt.afterFun Internals.Success
 
     timeOutMillis 8000
       |> Alt.afterFun (fun _ -> Internals.TimedOut)
@@ -94,21 +95,21 @@ let finalise target =
 let logMsgWaitAndShutdown (targetApi: Target.T) (logCallBack: (_ -> Job<unit>) -> #Job<unit>) =
   let logAndWait message =
     job {
-      do! logger.verboseWithBP (Logging.Message.eventX (sprintf "Sending message to Target(%s)" targetApi.name))
+      do! logger.verboseWithBP (eventX (sprintf "Sending message to Target(%s)" targetApi.name))
       let! res = Target.log Duration.Zero targetApi message
       match res with
       | Ok ack ->
-        do! logger.verboseWithBP (Logging.Message.eventX (sprintf "Waiting for Target(%s) to ACK message" targetApi.name))
+        do! logger.verboseWithBP (eventX (sprintf "Waiting for Target(%s) to ACK message" targetApi.name))
         do! ack
-        do! logger.verboseWithBP (Logging.Message.eventX (sprintf "Target(%s) ACKed message" targetApi.name))
+        do! logger.verboseWithBP (eventX (sprintf "Target(%s) ACKed message" targetApi.name))
       | Result.Error e ->
         failtestf "%A" e
     }
   let finaliseJob =
     job {
-      do! logger.verboseWithBP (Logging.Message.eventX "Finalising target")
+      do! logger.verboseWithBP (eventX "Finalising target")
       do! finalise targetApi
-      do! logger.verboseWithBP (Logging.Message.eventX "Target finalised!")
+      do! logger.verboseWithBP (eventX "Target finalised!")
     }
 
   Job.tryFinallyJob (logCallBack logAndWait) finaliseJob

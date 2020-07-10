@@ -133,6 +133,12 @@ type SpanOps with
     x.setAttribute(key, Value.Bool value)
   member x.setAttribute (key: string, value: string) =
     x.setAttribute(key, Value.Str value)
+  member x.setAttribute (key: string, value: IValueFormattable) =
+    match value.toKeyValues key with
+    | Choice1Of2 kvp ->
+      x.setAttribute(kvp.Key, kvp.Value)
+    | Choice2Of2 keyValues ->
+      for kvp in keyValues do x.setAttribute(kvp.Key, kvp.Value)
 
 type LogaryMessage with
   member x.asInstant = Instant.ofEpoch x.timestamp

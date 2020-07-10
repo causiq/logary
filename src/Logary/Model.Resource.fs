@@ -13,6 +13,8 @@ type K8s =
 
 type ResourceLocation =
   | Named of name: string * value: string
+  | BuildVersion of version: string
+  | BuildId of buildId: string
   | Kubernetes of K8s list
   | Hostname of string
   | Hypervisor of string
@@ -51,6 +53,8 @@ module Resource =
     let fold s (k, v) =
       match k with
       | "service" -> { s with service = v }
+      | "build_version" -> { s with detail = BuildVersion v :: s.detail }
+      | "build_id" -> { s with detail = BuildId v :: s.detail }
       | "rack" -> { s with detail = Rack v :: s.detail }
       | "hypervisor" -> { s with detail = Hypervisor v :: s.detail }
       | "dataCenter" -> { s with detail = DataCenter v :: s.detail }
@@ -77,6 +81,8 @@ module Resource =
       for detail in x.detail do
         match detail with
         | Named (k, v) -> yield k, v
+        | BuildVersion v -> yield "build_version", v
+        | BuildId bid -> yield "build_id", bid
         | Kubernetes ks ->
           for k in ks do
             match k with

@@ -54,57 +54,47 @@ let tests =
 
     testCaseJob "after shutting down no logging happens" <|
       job {
-        let! logm, out, error = buildLogManager ()
+        let! logm, out = buildLogManager ()
         let lg = logm.getLogger "logger.test"
 
         do! lg.eventAck("test info msg", fun m -> m.level <- Info)
         do! lg.errorAckIgnore("test error msg")
 
         let outStr = out.ToString()
-        let errorStr = error.ToString()
-        outStr |> Expect.stringContains "should contains" "info msg"
-        errorStr |> Expect.stringContains "should contains" "error msg"
+        outStr
+          |> Expect.stringContains "has info message" "info msg"
+        outStr
+          |> Expect.stringContains "has error message" "error msg"
 
         let timeout =  Duration.FromSeconds 3L
         let! _ = logm.shutdown(timeout, timeout)
 
         do! lg.errorBPIgnore("error after shutdown")
 
-        let errorOutput = error.ToString()
-        if errorOutput.Contains("after") then Expecto.Tests.failtestf "should not contains after, actual %s" errorOutput
+        let outStr = out.ToString()
+        if outStr.Contains "after" then
+          failtestf "should not contains after, actual %s" outStr
       }
 
     testCaseJob "getLogger with middleware" <| job {
       let correlationId = Guid.NewGuid().ToString("N")
       let customMid = Middleware.setContext "correlationId" (Value.Str correlationId)
-      let! logm, out, error = buildLogManagerWith (Config.middleware customMid)
-      let lg = logm.getLogger("logger.test")
-      do! lg.eventAck("test info msg", fun m -> m.level <- Info)
+      let! logm, out = buildLogManagerWith (Config.middleware customMid)
+
+      let lg = logm.getLogger "logger.test"
       do! lg.errorAckIgnore "test error msg"
 
       let outStr = out.ToString()
-      let errorStr = error.ToString()
       outStr
-        |> Expect.stringContains "should have svc ctx info" "svc"
-      outStr
-        |> Expect.stringContains "should have host ctx info" "localhost"
-      outStr
-        |> Expect.stringContains "should have correlationId ctx info" correlationId
-
-      errorStr
-        |> Expect.stringContains "should have svc ctx info" "svc"
-      errorStr
-        |> Expect.stringContains "should have host ctx info" "localhost"
-      errorStr
         |> Expect.stringContains "should have correlationId ctx info" correlationId
 
       do! logm.shutdown ()
     }
 
-    Tests.testSequencedGroup "ambient spans (must run on its own)" <|
+    testSequencedGroup "ambient spans (must run on its own)" <|
     testList "ambient spans" [
       let prepare = job {
-        let! manager, out, _  = buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
+        let! manager, out = buildLogManagerWith (fun conf -> conf |> Config.middleware Middleware.ambientSpanId)
         let checkSpanId (spanId: SpanId) = job {
           do! manager.flushPending ()
           let output = clearStream out
@@ -188,7 +178,7 @@ let tests =
     ]
 
     testCaseJob "switch logger level" (job {
-      let! logm, out, error = buildLogManager ()
+      let! logm, out = buildLogManager ()
       let lg = logm.getLogger "logger.test"
       do! lg.eventAck("test debug msg", fun m -> m.level <- Debug)
       do! lg.eventAck("test verbose msg", fun m -> m.level <- Verbose)
@@ -197,11 +187,14 @@ let tests =
       do! logm.flushPending ()
 
       let outStr = clearStream out
-      let errorStr = clearStream error
-      (outStr.Contains("debug")) |> Expect.isFalse  "should not have debug level msg, since the default rule is .* -> Info"
-      (outStr.Contains("verbose")) |> Expect.isFalse "should not have verbose level msg, since the default rule is .* -> Info"
-      outStr |> Expect.stringContains "should have info level msg" "info"
-      errorStr |> Expect.stringContains "should have error level msg" "error"
+      outStr.Contains "debug"
+        |> Expect.isFalse  "should not have debug level msg, since the default rule is .* -> Info"
+      outStr.Contains "verbose"
+        |> Expect.isFalse "should not have verbose level msg, since the default rule is .* -> Info"
+      outStr
+        |> Expect.stringContains "should have info level msg" "info"
+      outStr
+        |> Expect.stringContains "should have error level msg" "error"
 
 
       logm.switchLoggerLevel (".*test", LogLevel.Verbose)
@@ -209,6 +202,7 @@ let tests =
       do! lg.eventAck("test verbose msg", fun m -> m.level <- Verbose)
       do! lg.eventAck("test info msg", fun m -> m.level <- Info)
       do! logm.flushPending ()
+
       let outStr = clearStream out
       outStr |> Expect.stringContains "should have debug level msg after switch logger level" "debug"
       outStr |> Expect.stringContains "should have verbose level msg after switch logger level" "verbose"

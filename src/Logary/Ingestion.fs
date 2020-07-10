@@ -27,7 +27,7 @@ type Ingested =
     Bytes bs
   /// Create a new Ingested value from the byte array
   static member ofReadOnlySeq (bs: ReadOnlySequence<byte>) =
-    Bytes (bs.ToArray())
+    ByteSeq bs
   static member forceBytes = function
     | Bytes bs -> bs
     | ByteSeq r -> r.ToArray()

@@ -80,7 +80,7 @@ module Middleware =
   /// You can enable this middleware if you want Gauges and other Metrics coming as messages in Logary (e.g. via
   /// the Trace functionality), to be emitted into the `MetricRegistry`.
   ///
-  /// Will send Logary's Gauges/SpanData or a plain log message with a metric counter to the (Prometheus) Metric
+  /// Will send Logary's Gauges/SpanData or a plain event message with a metric counter to the (Prometheus) Metric
   /// registry.
   ///
   /// Will try to match Spans with conventions and map those to the Prometheus conventions:
@@ -95,8 +95,10 @@ module Middleware =
           eprintfn "Missing label \"%s\" specified in the LogaryMessageBase.counterConf field. Ensure you set all labels for this counter." labelName
           sprintf "Missing label \"%s\"" labelName)
 
-    let processMessageAsCounter message conf =
-      let counterMetric = GaugeConf.create conf |> registry.getOrCreate
+    let eventAsCounter message conf =
+      let counterMetric =
+        GaugeConf.create conf
+          |> registry.getOrCreate
 
       let counter =
         match conf.labelNames with
@@ -109,22 +111,28 @@ module Middleware =
 
       counter.inc 1.
 
-    let processLogaryGauge sensorName (gaugeName, gauge: Logary.Gauge) =
+    let gaugeToGauge sensorName (gaugeName, gauge: Logary.Gauge) =
       // TO CONSIDER: maybe make sensor + gauge as one metric name, not as one metric with gauge name as label
       let gaugeMetric =
-        GaugeConf.create(sensorName, "Gauge via " + sensorName, gauge.unit, [| "gauge_name" |])
-        |> registry.getOrCreate
-        |> Metric.labels [| gaugeName |]
+        GaugeConf.create(sensorName,
+                         "Gauge to Gauge via " + sensorName, gauge.unit,
+                         [| "gauge_name" |])
+          |> registry.getOrCreate
+          |> Metric.labels [| gaugeName |]
 
       gaugeMetric.set gauge.value.asFloat
 
-    let processSpanAsGauge (span: Logary.SpanMessage) =
-      let via = span.resource |> Option.map (fun name -> " via " + name.ToString()) |> Option.defaultValue ""
-      let gauge = GaugeConf.create(span.label, "Span" + via) |> registry.getOrCreate
+    let spanToGauge (span: Logary.SpanMessage) =
+      let resource = span.resource |> Option.map (sprintf " from resource '%O'.") |> Option.defaultValue "."
+      let gauge =
+        GaugeConf.create(span.label,
+                         "Span to Gauge via Span->Metric middleware (most recent span)" + resource,
+                         U.Seconds)
+        |> registry.getOrCreate
       gauge.unlabelled.set span.elapsed.TotalSeconds
 
     /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-semantic-conventions.md
-    let processSpanAsConvention (span: Logary.SpanMessage) =
+    let spanWithConventions (span: Logary.SpanMessage) =
       let httpLabels () =
          List.concat [
            span.tryGetInt "http.status_code" |> Option.map (fun code -> ("code", string code) :: []) |> Option.defaultValue []
@@ -162,19 +170,19 @@ module Middleware =
     ///
     /// Also tries to extract convention-based global gauges, see
     /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-semantic-conventions.md
-    let processLogarySpan (span: Logary.SpanMessage) =
-      processSpanAsGauge span
-      processSpanAsConvention span
+    let processSpan (span: Logary.SpanMessage) =
+      spanToGauge span
+      spanWithConventions span
 
     fun next message ->
       message.counterConf
-        |> Option.iter (processMessageAsCounter message)
+        |> Option.iter (eventAsCounter message)
 
       let sensorName = message.name.ToString()
       message.gauges
-        |> Seq.iter (fun (KeyValue (k, v)) -> processLogaryGauge sensorName (k, v))
+        |> Seq.iter (fun (KeyValue (k, v)) -> gaugeToGauge sensorName (k, v))
 
       message.tryGetAs<Logary.SpanMessage>()
-        |> Option.iter processLogarySpan
+        |> Option.iter processSpan
 
       next message

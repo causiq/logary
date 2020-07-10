@@ -1,11 +1,13 @@
 module Logary.Services.Rutta.Program
 
+open System.Net
 open Argu
 open System
 open System.Configuration
 open System.Threading
 open System.Runtime.InteropServices
 open Logary.Configuration
+open Logary.Model
 open Logary.Targets
 open Topshelf
 open Logary
@@ -25,20 +27,20 @@ let maybeSubcommand (argv: string[]): string[] =
 let executeProxy (args: ParseResults<ProxySubCommand>) =
   Proxy.proxy (args.GetResult Xsub_Connect_To) (args.GetResult Xpub_Bind)
 
-let executeRouter (ilevel: LogLevel) (args: ParseResults<RouterSubCommand>) =
+let executeRouter (internalLogary: LogManager) (args: ParseResults<RouterSubCommand>) =
   let listeners = args.PostProcessResults(RouterSubCommand.Listener, Parsers.listener)
   let targets = args.PostProcessResults(RouterSubCommand.Target, Parsers.targetConfig)
   let cors = not (args.Contains RouterSubCommand.Disable_CORS)
   if List.isEmpty listeners || List.isEmpty targets then
     failwith "Router `--listener` arguments empty, or `--target` arguments empty"
-  Router.start (cors, ilevel) targets listeners
+  Router.start (cors, internalLogary) targets listeners
 
-let executeShipper (cmdRes: ParseResults<ShipperSubCommand>) =
+let executeShipper (internalLogary: LogManager) (cmdRes: ParseResults<ShipperSubCommand>) =
   match cmdRes.GetAllResults() |> List.head with
   | Pub_To binding ->
-    Shipper.pubTo binding
+    Shipper.pubTo internalLogary binding
   | Push_To connect ->
-    Shipper.pushTo connect
+    Shipper.pushTo internalLogary connect
 
 let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: ArgumentParser<'SubCommand>) executeCommand cmdRes =
   // --help is a workaround for https://github.com/fsprojects/Argu/issues/113#issuecomment-464390860
@@ -61,29 +63,56 @@ let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: Argume
       22
 
 let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResults<Args>) =
+  let internalLogary, ilogger =
+    let isVerbose = results.Contains Args.Verbose
+    let internalLevel = if isVerbose then LogLevel.Verbose else LogLevel.Debug
+    let consoleConf = Console.ConsoleConf.create(SimpleMessageWriter(), Console.Error, includeResource=isVerbose)
+    let hostName = Dns.GetHostName()
+    let logary =
+      Resource.create("Logary Rutta",
+                      Hostname hostName
+                      // TO CONSIDER: https://stackoverflow.com/a/15145121/63621 — embed commit SHA as well
+                      :: BuildVersion AssemblyVersionInformation.AssemblyVersion
+                      :: [])
+        |> Config.create
+        |> Config.loggerMinLevel ".*" internalLevel
+        |> Config.loggerMinLevel "^Microsoft[.]AspNetCore[.]Server[.]Kestrel.*$" (if isVerbose then Debug else Warn)
+        |> Config.loggerMinLevel "^Microsoft[.]AspNetCore[.]Hosting[.]Diagnostics$" (if isVerbose then Debug else Warn)
+        |> Config.loggerMinLevel "^Giraffe[.]Middleware[.]GiraffeMiddleware$" (if isVerbose then LogLevel.Verbose else Info)
+        |> Config.ilogger (ILogger.Console internalLevel)
+        |> Config.target (Console.create consoleConf "console")
+        // TO CONSIDER: capture stdout, stderr
+        |> Config.buildAndRun
+    logary, logary.getLogger "Logary.Rutta.Startup"
+
   if results.Contains Version || results.IsUsageRequested then
     printfn "%s" (parser.PrintUsage())
     0
   else
-    let ilevel = if results.Contains Args.Verbose then LogLevel.Verbose else LogLevel.Info
-    let internalLogary = Config.create(Model.Resource.create("rutta")) |> Config.target (Console.create Console.empty "console") |> Config.build |> Hopac.Hopac.run
+    ilogger.verbose "Starting health service"
     use health = results.TryPostProcessResult(Args.Health, Parsers.bindingString)
                  |> Health.startServer internalLogary
+
+    ilogger.verbose "Calling TryGetSubCommand"
     match results.TryGetSubCommand() with
     | Some (Proxy cmd) ->
+      ilogger.verbose "Found Proxy command"
       let subParser = parser.GetSubCommandParser Proxy
       executeParser argv exiting subParser executeProxy cmd
 
     | Some (Router cmd) ->
+      ilogger.verbose "Found Router command"
       let subParser = parser.GetSubCommandParser Router
-      executeParser argv exiting subParser (executeRouter ilevel) cmd
+      executeParser argv exiting subParser (executeRouter internalLogary) cmd
 
     | Some (Shipper cmd) ->
+      ilogger.verbose "Found Shipper command"
       let subParser = parser.GetSubCommandParser Shipper
-      executeParser argv exiting subParser executeShipper cmd
+      executeParser argv exiting subParser (executeShipper internalLogary) cmd
 
     | _
     | None ->
+      ilogger.verbose "Did not find a subcommand, printing usage."
       eprintfn "%s" (parser.PrintUsage())
       10
 
