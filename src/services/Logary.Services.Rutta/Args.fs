@@ -3,13 +3,13 @@ namespace Logary.Services.Rutta
 open Logary.Ingestion
 
 #nowarn "49"
-// ignore "Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelt pattern name."
+// ignore "Uppercase variable identifiers should not generally be used in patterns, and may indicate a misspelled pattern name."
 
 open Argu
 open Logary.Configuration
 
 open System.Reflection
-[<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Unix")>]
+[<assembly: AssemblyTitle("Logary Rutta – a router/proxy/shipper for Windows and Linux")>]
 ()
 
 
@@ -150,10 +150,12 @@ type ShipperSubCommand =
 type Args =
   | [<AltCommandLine "-V"; Inherit; Unique>] Version
   | [<AltCommandLine "-v"; Inherit; Unique>] Verbose
-  | [<CliPrefix(CliPrefix.None)>] Proxy of args:ParseResults<ProxySubCommand>
-  | [<CliPrefix(CliPrefix.None)>] Router of args:ParseResults<RouterSubCommand>
-  | [<CliPrefix(CliPrefix.None)>] Shipper of args:ParseResults<ShipperSubCommand>
-  | [<AltCommandLine "-h"; Inherit>] Health of binding:string
+  /// LOGARY_RUTTA_ANALYTICS_ID
+  | [<AltCommandLine "-a"; Inherit; Unique>] Analytics_Id of analyticsId: string
+  | [<CliPrefix(CliPrefix.None)>] Proxy of args: ParseResults<ProxySubCommand>
+  | [<CliPrefix(CliPrefix.None)>] Router of args: ParseResults<RouterSubCommand>
+  | [<CliPrefix(CliPrefix.None)>] Shipper of args: ParseResults<ShipperSubCommand>
+  | [<AltCommandLine "-h"; Inherit>] Health of binding: string
 with
   interface IArgParserTemplate with
     member x.Usage =
@@ -162,6 +164,8 @@ with
         "Prints version information."
       | Verbose ->
         "Enables verbose logging while running Rutta. Useful for debugging your setup."
+      | Analytics_Id ->
+        "Sets your Logary Analytics Id for purposes of using the Analytics license of yours."
       | Proxy _ ->
         "Rutta in Proxy mode, does transparent forwarding of data between e.g. two subnets."
       | Router _ ->

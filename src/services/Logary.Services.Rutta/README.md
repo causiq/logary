@@ -15,6 +15,34 @@ or you can deploy it as a load-balanced Deployment that is used by multiple node
     # alternative, for production:
     kustomize build k8s/as-daemonset-with-scaling | kubectl apply -f -
 
+## Endpoints
+
+### Health
+
+    --health 0.0.0.0:9141
+
+ You can now scrape this at `/metrics` with Prometheus.
+
+ ### Listeners
+
+ #### HTTP
+
+    --listener http 0.0.0.0:8080 json
+
+You can now send JSON-formatted Spans, Events, etc, over HTTP.
+
+#### TCP
+
+    --listener tcp 0.0.0.0:9000 json
+
+You can now send a (JSON) message per line in a TCP socket to this endpoint.
+
+#### UDP
+
+    --listener udp 0.0.0.0:10002 json
+
+You can now send a message per UDP package to this endpoint.
+
 ## Testing Rutta
 
 Terminal 1

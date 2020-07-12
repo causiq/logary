@@ -16,6 +16,8 @@ open Logary.Services.Rutta
 
 let versionAndName = sprintf "Logary Rutta v%s" AssemblyVersionInformation.AssemblyVersion
 
+let envVarReader = PrefixedEnvVarReader("LOGARY_RUTTA_") :> IConfigurationReader
+
 let maybeSubcommand (argv: string[]): string[] =
   let found = ConfigurationManager.AppSettings.["subcommand"]
   if isNull found then argv else
@@ -49,7 +51,9 @@ let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: Argume
     0
   else
     try
-      let results = subParser.Parse(argv.[1..], ignoreMissing=false, ignoreUnrecognized=false, raiseOnUsage=false)
+      let results = subParser.Parse(argv.[1..],
+                                    configurationReader=envVarReader,
+                                    ignoreMissing=false, ignoreUnrecognized=false, raiseOnUsage=false)
       if results.IsUsageRequested then
         eprintfn "%s" (subParser.PrintUsage())
         21
@@ -90,7 +94,7 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
     0
   else
     ilogger.verbose "Starting health service"
-    use health = results.TryPostProcessResult(Args.Health, Parsers.bindingString)
+    use health = results.TryPostProcessResult(Health, Parsers.bindingString)
                  |> Health.startServer internalLogary
 
     ilogger.verbose "Calling TryGetSubCommand"
@@ -118,9 +122,14 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
 
 let execute argv (exiting: ManualResetEventSlim): int =
   let argv = maybeSubcommand argv
+
   let parser = ArgumentParser.Create<Args>(programName = "rutta", helpTextMessage = versionAndName, checkStructure = Help.checkStructure)
+
   try
-    let results = parser.Parse(argv, ignoreMissing=false, ignoreUnrecognized=true, raiseOnUsage=false)
+    let results = parser.Parse(argv,
+                               configurationReader=envVarReader,
+                               ignoreMissing=false, ignoreUnrecognized=true, raiseOnUsage=false)
+    printfn "analytics=%A" (results.TryGetResult Analytics_Id)
     executeInner argv exiting parser results
   with :? ArguParseException as e ->
     printfn "%s" e.Message
