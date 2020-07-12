@@ -5,6 +5,8 @@ version 5.242.2
 nuget Argu
 nuget Castle.Core ~> 4.4
 nuget Confluent.Kafka
+nuget Confluent.SchemaRegistry.Serdes.Protobuf
+nuget Confluent.SchemaRegistry.Serdes.Json
 nuget EventStore.Client
 nuget Expecto
 nuget Expecto.FsCheck

@@ -4,11 +4,6 @@
 #load "./.fake/build.fsx/intellisense.fsx"
 #load "paket-files/build/eiriktsarpalis/snippets/SlnTools/SlnTools.fs"
 
-// https://github.com/ionide/ionide-vscode-fsharp/issues/839#issuecomment-396296095
-#if !FAKE
-  #r "Facades/netstandard"
-#endif
-
 open System
 open System.IO
 open Fake.Api
