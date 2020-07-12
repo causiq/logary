@@ -67,6 +67,14 @@ type LogaryMessageBase(kind, ?timestamp, ?messageId, ?name, ?level,
   abstract addExn: e: exn * ?level: LogLevel -> unit
 
   default x.addExn(e: exn, ?level) =
+    match box e with
+    | :? IValueFormattable as vf ->
+      match vf.toKeyValues "exn" with
+      | Choice1Of2 kv ->
+        x.setField(kv.Key, kv.Value)
+      | Choice2Of2 kvs ->
+        x.setFieldValues kvs
+    | _ -> ()
     level |> Option.iter (fun level -> x.level <- level)
     x.setField("exn.message", Value.Str e.Message)
     x.setField("exn.helpLink", Value.Str e.HelpLink)

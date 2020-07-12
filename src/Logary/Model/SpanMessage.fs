@@ -19,7 +19,7 @@ type SpanMessage(label: string,
                  spanKind: SpanKind,
                  links: IList<_>,
                  attrs: IReadOnlyDictionary<string, Value>,
-                 events: IList<Logary.EventMessage>,
+                 events: IList<EventMessage>,
                  status: SpanCanonicalCode * string option,
                  onFinish: unit -> unit,
                  ?messageId,
@@ -48,12 +48,18 @@ type SpanMessage(label: string,
       x
     else
       lock _semaphore <| fun () ->
-      let tsFin = tsFin |> Option.defaultWith Global.getTimestamp
+      let ts =
+        match tsFin with
+        | None ->
+          Global.getTimestamp ()
+        | Some ts ->
+          ts
 
-      do _finished <- Some tsFin
+      do _finished <- Some ts
       do onFinish()
 
-      transform x
+      let res = transform x
+      res
 
   let _setStatus (code, desc) =
     lock _semaphore <| fun () ->
@@ -102,7 +108,7 @@ type SpanMessage(label: string,
     try base.fields.Add (k, a)
     finally Monitor.Exit _semaphore
 
-  member private x.addEvent (message: Logary.EventMessage) =
+  member private x.addEvent (message: EventMessage) =
     Monitor.Enter(_semaphore)
     try
       // add to _events
@@ -125,22 +131,44 @@ type SpanMessage(label: string,
     _finish x None |> runAfterFinish
     x
 
-  member val context = _context with get, set
-  member val label = _label with get, set
-  member val flags = _flags with get, set
-  member val spanKind = _spanKind with get, set
-  member x.started with get () = base.timestamp and set v = base.timestamp <- v
-  member val finished = _finished with get, set
-  member val status = _status with get, set
+  member x.context
+    with get() = _context
+     and set v = _context <- v
+
+  member x.label
+    with get () = _label
+     and set v = _label <- v
+
+  member x.flags
+    with get () = _flags
+     and set v = _flags <- v
+
+  member x.spanKind
+    with get () = _spanKind
+     and set v = _spanKind <- v
+
+  member x.started
+    with get () = base.timestamp
+     and set v = base.timestamp <- v
+
+  member x.finished
+    with get () = _finished
+     and set v = _finished <- v
+
+  member x.status
+    with get () = _status
+     and set v = _status <- v
 
   member internal x.debuggerDisplay
     with get() =
       let formatField (KeyValue (s, v)) = sprintf "%s=%O" s v
-      sprintf "%s %O flags=%O kind=%O id=%O with %i events and fields={ %s } (M.SpanMessage)"
-        x.label (x.elapsed.toGauge()) x.flags x.spanKind x.context.spanId events.Count
-        (x.fields |> Seq.map formatField |> String.concat "\n")
+      sprintf "%s %O finished=%O flags=%O kind=%O id=%O with %i events and fields={ %s } (M.SpanMessage)"
+        x.label (x.elapsed.toGauge()) x.finished x.flags x.spanKind x.context.spanId events.Count
+        (x.fields |> Seq.map formatField |> String.concat ", ")
 
-  override x.level with get() = _highestLevel and set v = _highestLevel <- v
+  override x.level
+    with get() = _highestLevel
+     and set v = _highestLevel <- v
 
   override x.parentSpanId
     with get() = _context.parentSpanId

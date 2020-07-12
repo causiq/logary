@@ -17,7 +17,7 @@ type NoopConf =
 
 let empty = { isYes = true }
 
-// When creating a new target this module gives the barebones
+// When creating a new target this module gives the bare-bones
 // for the approach you may need to take.
 module internal Impl =
 
@@ -33,9 +33,21 @@ module internal Impl =
     let rec loop (state: State) =
       // Alt.choose will pick the channel/alternative that first gives a value
       Alt.choose [
+        // When you get the shutdown value, you need to dispose of your resources
+        // off of Hopac's execution context (see Scheduler.isolate below) and
+        // then send a unit to the ack channel, to tell the requester that
+        // you're done disposing.
+        api.shutdownCh ^=> fun ack ->
+          // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
+          ack *<= ()
+
         // The ring buffer will fill up with messages that you can then consume below.
         // There's a specific ring buffer for each target.
         RingBuffer.take api.requests ^=> function
+        // ALT:
+        // RingBuffer.takeBatch 100us api.requests ^=> fun msgs ->
+        //   loop state
+
           // The Log discriminated union case contains a message which can have
           // either an Event or a Gauge `value` property.
           | Log (message, ack) ->
@@ -64,14 +76,6 @@ module internal Impl =
             (longRunningWait <|> nack) >>= fun _ ->
             // when you've either flushed or gotten NACKed, recurse...
             loop state
-
-        // When you get the shutdown value, you need to dispose of your resources
-        // off of Hopac's execution context (see Scheduler.isolate below) and
-        // then send a unit to the ack channel, to tell the requester that
-        // you're done disposing.
-        api.shutdownCh ^=> fun ack ->
-          // do! Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
-          ack *<= ()
 
       // The target is always 'responsive', so we may commit to the alternative
       // by upcasting it to a job and returning that.
@@ -107,7 +111,7 @@ type Builder(conf, callParent: ParentCallback<Builder>) =
 
   // c'tor, always include this one in your code
   new(callParent: ParentCallback<_>) =
-    Builder({ isYes = false }, callParent)
+    Builder(empty, callParent)
 
   // this is called in the end, after calling all your custom configuration
   // methods (above) which in turn take care of making the F# record that

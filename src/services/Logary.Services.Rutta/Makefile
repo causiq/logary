@@ -1,4 +1,4 @@
-.PHONY: dotnet_build image test_kustomize deploy_as_daemonset deploy_as_deployment push release
+.PHONY: dotnet_build image test_kustomize deploy_dev deploy_as_daemonset deploy_as_deployment push release
 
 TAG_VERSION_SUFFIX := $(shell ../../../tools/version.sh)
 
@@ -20,11 +20,20 @@ test_kustomize:
 	@echo ""
 	@echo "Tests pass!"
 
+deploy_dev:
+	@skaffold run
+
 deploy_as_daemonset:
 	kustomize build k8s/as-daemonset | kubectl apply -f -
 
 deploy_as_deployment:
 	kustomize build k8s/as-deployment | kubectl apply -f -
+
+simple_consumer:
+	kubectl run kafka-consumer -ti --image=strimzi/kafka:latest-kafka-2.4.0 --rm=true --restart=Never -- bin/kafka-console-consumer.sh --bootstrap-server $(KAFKA_CLUSTER_NAME)-kafka-bootstrap.kafka.svc:9092 --topic strimzi-tutorial --from-beginning
+
+simple_producer:
+	 kubectl run kafka-producer -ti --image=strimzi/kafka:latest-kafka-2.4.0 --rm=true --restart=Never -- bin/kafka-console-producer.sh --broker-list $(KAFKA_CLUSTER_NAME)-kafka-bootstrap.kafka.svc:9092 --topic strimzi-tutorial
 
 push:
 	docker push logary/rutta:latest

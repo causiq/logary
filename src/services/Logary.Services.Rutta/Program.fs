@@ -87,6 +87,7 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
         |> Config.target (Console.create consoleConf "console")
         // TO CONSIDER: capture stdout, stderr
         |> Config.buildAndRun
+
     logary, logary.getLogger "Logary.Rutta.Startup"
 
   if results.Contains Version || results.IsUsageRequested then
@@ -122,14 +123,11 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
 
 let execute argv (exiting: ManualResetEventSlim): int =
   let argv = maybeSubcommand argv
-
   let parser = ArgumentParser.Create<Args>(programName = "rutta", helpTextMessage = versionAndName, checkStructure = Help.checkStructure)
-
   try
     let results = parser.Parse(argv,
                                configurationReader=envVarReader,
                                ignoreMissing=false, ignoreUnrecognized=true, raiseOnUsage=false)
-    printfn "analytics=%A" (results.TryGetResult Analytics_Id)
     executeInner argv exiting parser results
   with :? ArguParseException as e ->
     printfn "%s" e.Message

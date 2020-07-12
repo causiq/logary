@@ -3,7 +3,6 @@
 namespace Logary
 
 open Hopac
-open Hopac.Infixes
 open Logary.Internals
 
 /// A target configuration is the 'reference' to the to-be-run target while it

@@ -138,6 +138,7 @@
     <!-- Below: config -->
     <Compile Include="Configuration/Config.fs" />
     <Compile Include="Configuration/Factory.fs" />
+    <Compile Include="Configuration\TargetConfWriter.fs" />
     <Compile Include="Configuration/Uri.fs" />
     <Compile Include="AssemblyInternals.fs" />
     <Compile Include="AssemblyInfo.fs" />

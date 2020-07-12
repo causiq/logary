@@ -157,7 +157,7 @@ let tests =
         parent.info "I log therefore I am"
 
         // overload, both Logger and SpanLogger have method `timeAlt`.
-        let randomWaitA = Alt.prepareJob (fun () -> Job.Random.bind (fun i -> Job.result (int (abs <| (int64 i) % 150L))) |> Job.map timeOutMillis)
+        let randomWaitA = Alt.prepareJob (fun () -> Job.Random.bind (fun i -> Job.result (max (int (abs <| (int64 i) % 150L)) 20)) |> Job.map timeOutMillis)
         let xA = parent.timeAlt(randomWaitA, "alt worker")
 
         // the work you'll schedule repeatedly which might go outside of Parent
@@ -176,7 +176,7 @@ let tests =
         let! loopCompleteP = Promise.start (cronJob () |> Alt.afterFun (parent.finish >> ignore))
 
         // let the work-loop go for a bit
-        do! timeOutMillis 300
+        do! timeOutMillis 3000
 
         // then shut it down and get the logged messages
         do! IVar.fill shutdownIV ()
@@ -206,8 +206,13 @@ let tests =
           span.label
             |> Expect.stringContains "Has 'alt ' in the label" "alt "
 
+          span.finished
+            |> Expect.notEqual (sprintf "The span '%s' must have a 'finished' prop ≠ 0" span.label) 0L
+
           (span.elapsed, Duration.Zero)
-            |> Expect.isGreaterThan "Should have an elapsed value ≥ 0."
+            |> Expect.isGreaterThan (sprintf
+                                       "The span '%s' should have an elapsed value ≥ 0, elapsed ticks: %f, finished=%i"
+                                       span.label span.elapsed.TotalTicks span.finished)
 
           span.parentSpanId
             |> Option.get

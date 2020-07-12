@@ -6,7 +6,6 @@ open FSharp.Control.Tasks.Builders
 open System
 open Logary
 open Logary.Internals
-open Logary.YoLo
 open NodaTime
 
 module SimpleFormatting =
@@ -94,6 +93,19 @@ module SimpleFormatting =
 
       yield "name", message.name.ToString()
       yield "type", message.kind.ToString()
+
+      match message.tryGetAs<EventMessage>() with
+      | Some event ->
+        if event.error.IsSome then
+          let error = event.error.Value :> IValueFormattable
+          match error.toKeyValues "error" with
+          | Choice1Of2 kv ->
+            yield kv.Key, kv.Value.ToString()
+          | Choice2Of2 kvs ->
+            for kv in kvs do
+              yield kv.Key, kv.Value.ToString()
+      | None ->
+        ()
     }
 
 

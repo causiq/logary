@@ -3,6 +3,7 @@ namespace Logary.Internals
 open System
 open System.Diagnostics
 open System.Threading
+open FSharp.Core.Operators.Checked
 open NodaTime
 open Hopac
 open Logary
@@ -54,11 +55,15 @@ type MonotonicClock private () =
   static let nsPerTimerTick = 1_000_000_000L / Stopwatch.Frequency
 
   // Sync logic + Hopac server
-  static let rec sync () = timeOutMillis 2000 |> Job.bind setter
+  static let rec sync () =
+    timeOutMillis 2000 |> Job.bind setter
+
   and setter () =
-    let dtNow = DateTime.UtcNow.Ticks
+    let dtNow = DateTimeOffset.UtcNow.asTimestamp
     let swNow = state.start + state.sw.ElapsedTicks * nsPerTimerTick
-    if abs (dtNow - swNow) > allowedDelta then reset ()
+    if abs (dtNow - swNow) > allowedDelta then
+      eprintfn "MonotonicClock is resetting; dtNow=%i, swNow=%i, dt=%i" dtNow swNow (abs (dtNow - swNow))
+      reset ()
     sync ()
 
   // We start a global Hopac server that ensures we don't drift more than 20ms from the actual time.

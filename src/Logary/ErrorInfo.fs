@@ -42,3 +42,15 @@ type ErrorInfo(?message, ?errorType, ?stackTrace, ?inner) =
     member x.Equals o =
       x.message = o.message
       && x.errorType = o.errorType
+
+
+  interface IValueFormattable with
+    member x.toKeyValues baseKey =
+      let d = Dictionary<string, Value>()
+      let addStr (k: string) (s: string) = d.Add(sprintf "%s.%s" baseKey k, Value.Str s)
+      x.message |> Option.iter (addStr "message")
+      x.errorType |> Option.iter (addStr "errorType")
+      //x.stackTrace |> Option.iter (addStr "stackTrace")
+      //x.inner |> Option.iter (fun x -> (x :> IValueFormattable).toKeyValues(sprintf "%s.inner" baseKey))
+      d :> IReadOnlyDictionary<string, Value>
+        |> Choice2Of2

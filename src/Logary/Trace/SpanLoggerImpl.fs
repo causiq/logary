@@ -29,15 +29,13 @@ type internal SpanLoggerImpl(logger: Logger,
   let span = spanModel :> Span
 
   member internal x.debuggerDisplay
-    with get () =
-      sprintf "SpanLogger of %s" spanModel.debuggerDisplay
+    with get () = sprintf "SpanLogger of %s" spanModel.debuggerDisplay
 
   /// Centered around logging this Span itself.
   member private x._finishAndLogMyself (transform: _ -> _) =
     let resultSpan = spanModel.finish transform
     queueIgnore (base.logWithAck(false, resultSpan))
     resultSpan
-
 
   /// Centered around logging events into this Span.
   override x.logWithAck (waitForBuffers, message) =
@@ -85,17 +83,17 @@ type internal SpanLoggerImpl(logger: Logger,
     member x.finish () = x._finishAndLogMyself ignore :> _
 
 
-  interface Logary.Trace.Span with
+  interface Span with
     member __.elapsed = span.elapsed
     member __.isRecording = span.isRecording
     member __.setLabel labelFactory = span.setLabel labelFactory
     member __.finished = span.finished
 
 
-  interface Logary.Trace.SpanOpsAdvanced with
+  interface SpanOpsAdvanced with
     member x.finish transform = x._finishAndLogMyself transform :> _
 
-  interface Logary.Trace.SpanLogger with
+  interface SpanLogger with
     member x.enableStreaming () = _streaming <- true
 
     member __.finishWithAck (transform: Model.SpanMessage -> unit) =

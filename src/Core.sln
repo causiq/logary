@@ -40,6 +40,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Giraffe", "..\exampl
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Giraffe", "Logary.Giraffe\Logary.Giraffe.fsproj", "{793F0858-E9FE-4B78-B423-41F70E648988}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Logary.Targets.Kafka", "targets\Logary.Targets.Kafka\Logary.Targets.Kafka.fsproj", "{AB076938-E370-4E78-80FC-250AFD6407E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,6 +60,7 @@ Global
 		{297E1101-20DA-4AB3-A797-6592365BA860} = {05B8BB9E-6548-4916-91FC-39BBC878C657}
 		{854D2F88-B2DA-4C00-98B0-9D81D0860B04} = {25D48F17-B0A8-4F98-AE83-07F6E7AFDD3C}
 		{793F0858-E9FE-4B78-B423-41F70E648988} = {9F28952C-9E31-4BAD-9EA7-393ED314234B}
+		{AB076938-E370-4E78-80FC-250AFD6407E8} = {8BA590E2-4F28-4029-9364-D49BFF3123BF}
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{55399874-D8FA-48A2-A8E3-94AB4BA5C8C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -108,5 +111,9 @@ Global
 		{793F0858-E9FE-4B78-B423-41F70E648988}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{793F0858-E9FE-4B78-B423-41F70E648988}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{793F0858-E9FE-4B78-B423-41F70E648988}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB076938-E370-4E78-80FC-250AFD6407E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB076938-E370-4E78-80FC-250AFD6407E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB076938-E370-4E78-80FC-250AFD6407E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB076938-E370-4E78-80FC-250AFD6407E8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

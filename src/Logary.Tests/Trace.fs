@@ -84,7 +84,13 @@ let tests =
         spanLogger.finished
           |> Expect.isNone "Should not have finished yet"
 
-        spanLogger.finish() |> ignore
+        let res = spanLogger.finish()
+
+        spanLogger.finished
+          |> Expect.isSome "Should have finished now"
+
+        (res.finished, 1L)
+          |> Expect.isGreaterThan "Should have finished; finished > 1L"
     ]
 
     testList "sampling" [

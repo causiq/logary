@@ -119,6 +119,11 @@ module LoggerEx =
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
+    [<CompiledName "Verbose">]
+    member x.verboseDelay(messageFactory, ?builder) =
+      if x.level > Verbose then () else
+      x.verbose(messageFactory (), ?builder=builder)
+
     [<CompiledName "Debug">]
     member x.debug(message, ?builder) =
       let m = (Model.Event(message, None, level=Debug))

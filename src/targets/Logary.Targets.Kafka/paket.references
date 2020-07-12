@@ -1,0 +1,6 @@
+FSharp.Core
+Hopac
+NodaTime
+Confluent.Kafka
+Confluent.SchemaRegistry.Serdes.Protobuf
+Confluent.SchemaRegistry.Serdes.Json

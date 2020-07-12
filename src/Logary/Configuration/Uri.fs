@@ -5,6 +5,7 @@ open System
 open System.Reflection
 open System.Collections.Generic
 open Logary
+open Logary.Configuration.Target
 
 type internal Helper() =
   static member getDefaultGeneric<'T> () =
@@ -19,15 +20,12 @@ type internal Helper() =
 module Uri =
   let private (|Info|NoInfo|) inp =
     match inp with
-    | null
-    | "" ->
+    | null | "" ->
       NoInfo
-
     | data ->
       match String.split ':' data with
       | [ u; p ] ->
         Info (u, p)
-
       | _ ->
         NoInfo
 
@@ -45,7 +43,8 @@ module Uri =
       typeof<float>, float >> box
       typeof<Single>, single >> box
       typeof<decimal>, decimal >> box
-    ] |> List.iter d.Add
+    ]
+    |> List.iter d.Add
     d
 
 
@@ -53,7 +52,6 @@ module Uri =
     match typ.GetMethod("tryParse", BindingFlags.Static ||| BindingFlags.Public) with
     | null ->
       None
-
     | m ->
       Some (fun (s: string) ->
         m.Invoke(null, [| s |]) |> unbox: Choice<obj, string>)
@@ -64,12 +62,10 @@ module Uri =
       match tryGetTryParse typ with
       | None ->
         Convert.ChangeType(v, typ) |> box
-
       | Some tryParse ->
         match tryParse v with
         | Choice1Of2 v ->
           box v
-
         | Choice2Of2 _ ->
           Convert.ChangeType(v, typ) |> box
 
@@ -77,18 +73,21 @@ module Uri =
       converter v
 
   let parseConfig (recordType: Type) (emptyValue: obj) (uri: Uri) =
-    let argVals =
-      let qVals =
-        uri.Query
-        |> String.trimc '?'
-        |> String.split '&'
-        |> List.filter (String.IsNullOrWhiteSpace >> not)
-        |> List.map (String.split '=' >> function
-          | [ k; v] -> k, v
-          | other -> failwithf "Unexpected %A" other)
-        |> Map.ofList
+    let qVals =
+      uri.Query
+      |> String.trimc '?'
+      |> String.split '&'
+      |> List.filter (String.IsNullOrWhiteSpace >> not)
+      |> List.map (String.split '=' >> function
+        | [ k; v] -> k, v
+        | other -> failwithf "Unexpected %A" other)
+      |> Map.ofList
 
+    let recordFields =
       FSharpType.GetRecordFields recordType
+
+    let argVals =
+      recordFields
       |> Array.map (fun p ->
         p.PropertyType, p.Name, p.GetValue emptyValue)
 
@@ -97,12 +96,10 @@ module Uri =
         | Some v ->
           v |> convertTo typ
 
-        | None when String.equalsCaseInsensitive name "endpoint"
-                 && typ = typeof<Uri> ->
+        | None when typ = typeof<Uri> ->
           let ub = UriBuilder uri
-          let scheme' = if uri.Scheme.Contains("+") then uri.Scheme.Substring(uri.Scheme.IndexOf("+") + 1)
-                        else uri.Scheme
-          ub.Scheme <- scheme'
+          ub.Scheme <- if uri.Scheme.Contains("+") then uri.Scheme.Substring(uri.Scheme.IndexOf("+") + 1)
+                       else uri.Scheme
           ub.UserName <- ""
           ub.Password <- ""
           box ub.Uri
@@ -111,7 +108,6 @@ module Uri =
           match uri.UserInfo with
           | Info (user, _) ->
             box (Some user)
-
           | NoInfo ->
             defaultValue
 
@@ -119,14 +115,24 @@ module Uri =
           match uri.UserInfo with
           | Info (_, pass) ->
             box (Some pass)
-
           | NoInfo ->
             defaultValue
-
         | None ->
           defaultValue)
 
-    FSharpValue.MakeRecord(recordType, argVals)
+    let config = FSharpValue.MakeRecord(recordType, argVals)
+
+    // https://docs.microsoft.com/en-us/dotnet/api/system.type.invokemember?view=netcore-3.1#System_Type_InvokeMember_System_String_System_Reflection_BindingFlags_System_Reflection_Binder_System_Object_System_Object___System_Globalization_CultureInfo_
+    // https://docs.microsoft.com/en-us/dotnet/framework/reflection-and-codedom/how-to-examine-and-instantiate-generic-types-with-reflection
+    let closedGenericType = typedefof<TargetConfWriter<_>>.MakeGenericType([| recordType |])
+    if closedGenericType.IsAssignableFrom(recordType) then
+      let flags = BindingFlags.DeclaredOnly ||| BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance ||| BindingFlags.InvokeMethod
+      let settings = qVals |> Seq.map (fun (KeyValue (k, v)) -> k, v, recordFields |> Array.exists (fun pi -> pi.Name = k))
+      let folder (config: obj) (k: string, v: string, hasOwnField: bool) =
+        closedGenericType.InvokeMember("write", flags, null, config, [| k; v; hasOwnField |])
+      settings |> Seq.fold folder config
+    else
+      config
 
   let parseConfigString recordType emptyValue uriString =
     parseConfig recordType emptyValue (Uri uriString)
@@ -182,7 +188,7 @@ module TargetConfig =
       :?> TargetConf
 
     static member create configType moduleName moduleType =
-      //printfn "Create DynamicConfig with (configType=%A, moduleName=%A, moduleType=%A)" configType moduleName moduleType
+      // printfn "Create DynamicConfig with (configType=%A, moduleName=%A, moduleType=%A)" configType moduleName moduleType
       { configType = configType
         moduleName = moduleName
         moduleType = moduleType }
@@ -199,13 +205,13 @@ module TargetConfig =
       "influxdb",    moduleNameConfigNameAsm "InfluxDb"
       "jaeger",      moduleNameConfigNameAsm "Jaeger"
       "mixpanel",    moduleNameConfigNameAsm "Mixpanel"
-      "opsgenie",    moduleNameConfigNameAsm "OpsGenie"
       "rabbitmq",    moduleNameConfigNameAsm "RabbitMQ"
       "stackdriver", moduleNameConfigNameAsm "Stackdriver"
       "bigquery",    moduleNameConfigNameAsm "BigQuery"
       "googlepubsub", moduleNameConfigNameAsm "GooglePubSub"
       "shipper",     moduleNameConfigNameAsm "Shipper"
       "sse",         moduleNameConfigNameAsm "SSE"
+      "kafka",       moduleNameConfigNameAsm "Kafka"
     ]
     |> List.map (fun (scheme, (moduleName, configName)) ->
       let confType = Type.GetType configName
@@ -213,12 +219,15 @@ module TargetConfig =
       scheme, DynamicConfig.create confType moduleName moduleType)
     |> Map
 
-  let create (targetUri: Uri): TargetConf =
-    let scheme = targetUri.Scheme.ToLowerInvariant()
-    match schemeToConfAndDefault |> Map.tryFind scheme with
+  let createWithConfig (config: Map<string, DynamicConfig>) (targetURI: Uri): TargetConf =
+    let scheme = targetURI.Scheme.ToLowerInvariant()
+    match config |> Map.tryFind scheme with
     | None ->
       failwithf "Logary has not yet got support for '%s' targets" scheme
     | Some dynamicConfig ->
       let configDefault = dynamicConfig.getDefault ()
-      Uri.parseConfig dynamicConfig.configType configDefault targetUri
-      |> fun config -> dynamicConfig.createTargetConf config scheme
+      let config = Uri.parseConfig dynamicConfig.configType configDefault targetURI
+      dynamicConfig.createTargetConf config scheme
+
+  let create (targetURI: Uri): TargetConf =
+    createWithConfig schemeToConfAndDefault targetURI

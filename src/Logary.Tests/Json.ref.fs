@@ -373,7 +373,7 @@ let tests fsc =
             |> Expect.equal "Should have a true value" expected
       ]
 
-      ftestCase "Span" <| fun () ->
+      testCase "Span" <| fun () ->
         // mimicks "zipkin-trace.json" with Logary conventions
         let start = 1_590_710_774_586_371_000L
         let span =

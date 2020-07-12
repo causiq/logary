@@ -13,7 +13,6 @@
     </Content>
     <None Include="paket.references" />
     <ProjectReference Include="..\..\src\adapters\Logary.Adapters.AspNetCore\Logary.Adapters.AspNetCore.fsproj" />
-    <ProjectReference Include="..\..\src\Logary.Prometheus\Logary.Prometheus.fsproj" />
     <ProjectReference Include="..\..\src\targets\Logary.Targets.Jaeger\Logary.Targets.Jaeger.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

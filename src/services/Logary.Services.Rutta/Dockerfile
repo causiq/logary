@@ -8,6 +8,10 @@ ENV LC_ALL=C.UTF-8
 RUN apk add --no-cache --update alpine-sdk zeromq protobuf protobuf-dev ca-certificates && \
     rm -f /var/cache/apk/*
 
+RUN curl --silent -L -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+    curl --silent -LO https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.31-r0/glibc-2.31-r0.apk && \
+    apk add glibc-2.31-r0.apk
+
 # Required to do `dotnet restore`
 COPY .config ./.config
 COPY Makefile paket.dependencies paket.lock ./
