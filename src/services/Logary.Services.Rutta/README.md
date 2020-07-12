@@ -19,7 +19,7 @@ or you can deploy it as a load-balanced Deployment that is used by multiple node
 
 ### Health
 
-    --health 0.0.0.0:9141
+    --health 0.0.0.0:9114
 
  You can now scrape this at `/metrics` with Prometheus.
 

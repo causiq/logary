@@ -27,6 +27,10 @@ spec:
                 "--listener", "udp", "0.0.0.0:14001", "json",
                 "--target", "console://." ]
 
+        env:
+        - name: LOGARY_RUTTA_ANALYTICS_ID
+          value: open-source
+
         ports:
         - name: http-json
           containerPort: 3000
@@ -38,14 +42,14 @@ spec:
         readinessProbe:
           initialDelaySeconds: 0
           httpGet:
-            path: /health
+            path: /metrics
             port: 9114
 
         # Many applications running for long periods of time eventually transition to broken states, and cannot recover except by being restarted. Kubernetes provides liveness probes to detect and remedy such situations.
         livenessProbe:
           initialDelaySeconds: 10
           httpGet:
-            path: /health
+            path: /metrics
             port: 9114
 
         resources:
