@@ -44,7 +44,7 @@ ENV GID=23456
 
 # https://github.com/grpc/grpc/issues/21446
 RUN apk update --no-cache && \
-    apk add zeromq protobuf protobuf-dev ca-certificates && \
+    apk add curl zeromq protobuf protobuf-dev ca-certificates && \
     curl --silent -L -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
     curl --silent -LO https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.31-r0/glibc-2.31-r0.apk && \
     apk add glibc-2.31-r0.apk && \

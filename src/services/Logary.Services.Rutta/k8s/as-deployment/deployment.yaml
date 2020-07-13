@@ -20,14 +20,17 @@ spec:
       # For example:
       # docker run --rm -p 3000:3000 -it logary/rutta:latest router --listener http '0.0.0.0:3000' json --target console://
       - name: rutta
-        image: logary/rutta
+        image: logary/rutta:481251f2
         imagePullPolicy: Never
+
         args: [ "router",
                 "--health", "0.0.0.0:9114",
                 "--listener", "http", "0.0.0.0:3000", "json",
                 "--listener", "udp", "0.0.0.0:14001", "json",
                 "--target", "console://.",
-                "--target", "kafka://?bootstrap.servers=ingress-broker-kafka-bootstrap.kafka.svc:9092&replicationFactor=1"]
+                "--target", "kafka://?bootstrap.servers=ingress-broker-kafka-bootstrap.kafka.svc:9092&replicationFactor=1"
+                #"--verbose"
+              ]
 
         env:
         - name: LOGARY_RUTTA_ANALYTICS_ID

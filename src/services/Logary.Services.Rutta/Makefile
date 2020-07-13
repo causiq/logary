@@ -1,10 +1,13 @@
 .PHONY: dotnet_build image test_kustomize deploy_dev deploy_as_daemonset deploy_as_deployment push release
 
 TAG_VERSION_SUFFIX := $(shell ../../../tools/version.sh)
+COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
 image:
 	(cd ../../.. && \
-	docker build -t logary/rutta:latest -t logary/rutta:$(TAG_VERSION_SUFFIX) \
+	docker build -t logary/rutta:latest \
+		-t logary/rutta:$(COMMIT_HASH) \
+		-t logary/rutta:$(TAG_VERSION_SUFFIX) \
 		-f src/services/Logary.Services.Rutta/Dockerfile \
 		.)
 

@@ -129,9 +129,14 @@ let execute argv (exiting: ManualResetEventSlim): int =
                                configurationReader=envVarReader,
                                ignoreMissing=false, ignoreUnrecognized=true, raiseOnUsage=false)
     executeInner argv exiting parser results
-  with :? ArguParseException as e ->
+  with
+  | :? ArguParseException as e ->
     printfn "%s" e.Message
     11
+  | e ->
+    eprintfn "Fatal error: %O" e
+    100
+
 
 ///////////// WINDOWS //////////////
 let startWindows argv: int =

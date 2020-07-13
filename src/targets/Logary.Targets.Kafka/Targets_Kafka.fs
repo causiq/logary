@@ -2,6 +2,7 @@
 
 open System
 open System.Collections.Generic
+open System.Text
 open System.Threading
 open Confluent.Kafka.Admin
 open System.Threading.Tasks
@@ -111,6 +112,8 @@ type LazyDisposer<'a when 'a :> IDisposable>(dL: Lazy<'a>) =
 // When creating a new target this module gives the bare-bones
 // for the approach you may need to take.
 module internal Impl =
+  open Logary.Internals.Chiron
+
   type Producer = IProducer<Id, LogaryMessageBase>
 
   let idSerializer: ISerializer<Id> =
@@ -122,7 +125,10 @@ module internal Impl =
   let valueSerializer: IAsyncSerializer<LogaryMessageBase> =
     { new IAsyncSerializer<LogaryMessageBase> with
         member x.SerializeAsync(message, context): Task<byte[]> =
-          Task.FromResult Array.empty
+          Json.Encode.logaryMessageBase message
+            |> Json.formatWith JsonFormattingOptions.Compact
+            |> Encoding.UTF8.GetBytes
+            |> Task.FromResult
     }
 
   type  SyslogLevel with
@@ -158,33 +164,40 @@ module internal Impl =
       api.runtime.logger.log(e)
 
   let logCreateTopicExn (topicName: string, api: TargetAPI) (e: CreateTopicsException) =
-    if e.Results.[0].Error.Code <> ErrorCode.TopicAlreadyExists then
-      api.runtime.logger.error("An error occured creating topic={topic}: {reason}", fun m ->
-        m.setField("topic", topicName)
-        m.setField("reason", e.Results.[0].Error.Reason))
-    else
-      api.runtime.logger.verbose "Topic already exists"
+    try
+      if e.Results.[0].Error.Code <> ErrorCode.TopicAlreadyExists then
+        api.runtime.logger.error("An error occured creating topic={topic}: {reason}", fun m ->
+          m.setField("topic", topicName)
+          m.setField("reason", e.Results.[0].Error.Reason))
+      else
+        api.runtime.logger.info (sprintf "Topic '%s' already exists, continuing..." topicName)
+    with e ->
+      eprintfn "%O" e // exception from exception handler :(
 
   let maybeCreateTopic (conf: KafkaConf) (api: TargetAPI) =
     if not conf.tryCreate then
-      api.runtime.logger.verbose "Will not try to create topic, because tryCreate=false in the KafkaConf config."
+      api.runtime.logger.debug "Will not try to create topic, because tryCreate=false in the KafkaConf config."
       Job.unit ()
     else
       job {
-        do api.runtime.logger.debug (sprintf "Will try to create topic '%s'" conf.topicName)
+        do api.runtime.logger.debug (sprintf "Maybe creating topic '%s'" conf.topicName)
         use c = AdminClientBuilder(conf.prodConf).Build()
+        do api.runtime.logger.debug "Built AdminClient"
         try
           let fourSeconds = TimeSpan.FromSeconds 4. |> Nullable<_>
           let o = CreateTopicsOptions(OperationTimeout=fourSeconds, RequestTimeout=fourSeconds)
+          do api.runtime.logger.debug (sprintf "Calling CreateTopicsAsync create for topic '%s'" conf.topicName)
           do! Job.fromUnitTask (fun () -> c.CreateTopicsAsync(conf.asTopicSpec :: [], o))
         with
         | :? CreateTopicsException as e ->
-            logCreateTopicExn (conf.topicName, api) e
+          logCreateTopicExn (conf.topicName, api) e
         | :? AggregateException as ae ->
           if ae.InnerException :? CreateTopicsException then
             logCreateTopicExn (conf.topicName, api) (ae.InnerException :?> CreateTopicsException)
+            return ()
           else
-            ae.reraise()
+            api.runtime.logger.error ("Crashed with AggregateException", fun m -> m.addExn ae)
+            return! Job.raises ae
       }
 
   let private logReportReceived _ = "Delivery report received"
@@ -198,11 +211,9 @@ module internal Impl =
     /// Sends on fatalCh if IsFatal is true
     let handleError (p: Producer) (error: Error) =
       let e = KafkaTargetExn.ofError error
-      if error.IsFatal then
-        queue (Ch.give fatalCh (p, e))
-      else
-        let setDetails (m: LogaryMessageBase) = m.addExn e
-        api.runtime.logger.error("Kafka target received non-fatal error", setDetails)
+      let setDetails (m: LogaryMessageBase) = m.addExn e
+      api.runtime.logger.error(e.Message, setDetails)
+      if error.IsFatal then queue (Ch.give fatalCh (p, e))
 
     /// Also ACKs.
     let handleReport (ack: IVar<unit>) =
@@ -210,9 +221,10 @@ module internal Impl =
         let fillJ =
           if report.Error.IsFatal then
             // TO CONSIDER: can callers of logWithAck handle failing (with exception) ACKs, or should
-            // I do it via "catastrophicsCh" instead?
-            let ex = KafkaTargetExn.ofError report.Error
-            IVar.fillFailure ack ex
+            // I do it via "fatalCh" instead?
+            //let ex = KafkaTargetExn.ofError report.Error
+            //IVar.fillFailure ack ex
+            IVar.fill ack ()
           else
             IVar.fill ack ()
 
@@ -233,6 +245,7 @@ module internal Impl =
           .SetValueSerializer(valueSerializer) // can we integrate with serde/schema registry
           .Build()
 
+      api.runtime.logger.debug("Starting Kafka target's producer", fun m -> m.setField("config", conf))
       Job.using p (State.create >> loop)
 
     and loop (state: State) =
