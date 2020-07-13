@@ -31,14 +31,18 @@ module SimpleFormatting =
     varRegex.Replace(template, evaluator),
     !usedVars
 
-  let private kvsRegex = Regex("[\\\"]", RegexOptions.Compiled ||| RegexOptions.CultureInvariant ||| RegexOptions.IgnoreCase)
+  let private kvsRegex = Regex("""["\a\b\t\r\v\f\n]""", RegexOptions.Compiled ||| RegexOptions.CultureInvariant ||| RegexOptions.IgnoreCase)
   let private spaceRegex = Regex("\\s", RegexOptions.Compiled)
 
   let private escapeValue (value: string): string =
     let inner (m: Match): string =
       match m.Value with
+      // backspace, vertical tab, form feed, alert, carriage return
+      | "\b" | "\v" | "\f" | "\a" | "\r" -> ""
       | "\\" -> "\\\\"
       | "\"" -> "\\\""
+      | "\n" -> "\\n"
+      | "\t" -> "\\t"
       | _ -> m.Value
     let quoteIfHasSpace (s: string) =
       if spaceRegex.IsMatch s then String.Concat([| "\""; s; "\"" |]) else s

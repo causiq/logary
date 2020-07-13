@@ -11,6 +11,7 @@ open Logary
 type private MonotonicClockState =
   { start: EpochNanoSeconds; sw: Stopwatch }
 
+  /// Also picks up the current DateTimeOffset.UtcNow timestamp
   static member create(maxSeen) =
     let now = DateTimeOffset.UtcNow.asTimestamp
     let sw = Stopwatch.StartNew()
@@ -62,7 +63,13 @@ type MonotonicClock private () =
     let dtNow = DateTimeOffset.UtcNow.asTimestamp
     let swNow = state.start + state.sw.ElapsedTicks * nsPerTimerTick
     if abs (dtNow - swNow) > allowedDelta then
-      eprintfn "MonotonicClock is resetting; dtNow=%i, swNow=%i, dt=%i" dtNow swNow (abs (dtNow - swNow))
+      // https://www.docker.com/blog/addressing-time-drift-in-docker-desktop-for-mac/
+      // docker run --rm --privileged alpine /bin/dmesg | grep clocksource
+      eprintfn
+        "MonotonicClock drift (%i ms) is > %i ms; dtNow=%i, swNow=%i, isHighRes=%b"
+        (abs (dtNow - swNow) / 1_000_000L)
+        (allowedDelta / 1_000_000L)
+        dtNow swNow  Stopwatch.IsHighResolution
       reset ()
     sync ()
 

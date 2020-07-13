@@ -6,11 +6,10 @@ WORKDIR /build/
 ENV LC_ALL=C.UTF-8
 
 RUN apk add --no-cache --update alpine-sdk zeromq protobuf protobuf-dev ca-certificates && \
-    rm -f /var/cache/apk/*
-
-RUN curl --silent -L -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+    curl --silent -L -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
     curl --silent -LO https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.31-r0/glibc-2.31-r0.apk && \
-    apk add glibc-2.31-r0.apk
+    apk add glibc-2.31-r0.apk && \
+    rm -f /var/cache/apk/*
 
 # Required to do `dotnet restore`
 COPY .config ./.config
@@ -43,8 +42,12 @@ ENV USER=logary
 ENV UID=12345
 ENV GID=23456
 
+# https://github.com/grpc/grpc/issues/21446
 RUN apk update --no-cache && \
-    apk add libc6-compat zeromq protobuf protobuf-dev ca-certificates && \
+    apk add zeromq protobuf protobuf-dev ca-certificates && \
+    curl --silent -L -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+    curl --silent -LO https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.31-r0/glibc-2.31-r0.apk && \
+    apk add glibc-2.31-r0.apk && \
     addgroup -S "$USER" && \
     adduser \
       --disabled-password \

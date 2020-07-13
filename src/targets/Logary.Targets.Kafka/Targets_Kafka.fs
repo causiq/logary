@@ -157,6 +157,14 @@ module internal Impl =
       e.name <- logMessage.Facility |> PointName.parse
       api.runtime.logger.log(e)
 
+  let logCreateTopicExn (topicName: string, api: TargetAPI) (e: CreateTopicsException) =
+    if e.Results.[0].Error.Code <> ErrorCode.TopicAlreadyExists then
+      api.runtime.logger.error("An error occured creating topic={topic}: {reason}", fun m ->
+        m.setField("topic", topicName)
+        m.setField("reason", e.Results.[0].Error.Reason))
+    else
+      api.runtime.logger.verbose "Topic already exists"
+
   let maybeCreateTopic (conf: KafkaConf) (api: TargetAPI) =
     if not conf.tryCreate then
       api.runtime.logger.verbose "Will not try to create topic, because tryCreate=false in the KafkaConf config."
@@ -166,14 +174,17 @@ module internal Impl =
         do api.runtime.logger.debug (sprintf "Will try to create topic '%s'" conf.topicName)
         use c = AdminClientBuilder(conf.prodConf).Build()
         try
-          do! Job.fromUnitTask (fun () -> c.CreateTopicsAsync(conf.asTopicSpec :: []))
-        with :? CreateTopicsException as e ->
-          if e.Results.[0].Error.Code <> ErrorCode.TopicAlreadyExists then
-            api.runtime.logger.error("An error occured creating topic={topic}: {reason}", fun m ->
-              m.setField("topic", conf.topicName)
-              m.setField("reason", e.Results.[0].Error.Reason))
+          let fourSeconds = TimeSpan.FromSeconds 4. |> Nullable<_>
+          let o = CreateTopicsOptions(OperationTimeout=fourSeconds, RequestTimeout=fourSeconds)
+          do! Job.fromUnitTask (fun () -> c.CreateTopicsAsync(conf.asTopicSpec :: [], o))
+        with
+        | :? CreateTopicsException as e ->
+            logCreateTopicExn (conf.topicName, api) e
+        | :? AggregateException as ae ->
+          if ae.InnerException :? CreateTopicsException then
+            logCreateTopicExn (conf.topicName, api) (ae.InnerException :?> CreateTopicsException)
           else
-            api.runtime.logger.verbose "Topic already exists"
+            ae.reraise()
       }
 
   let private logReportReceived _ = "Delivery report received"

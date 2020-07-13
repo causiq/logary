@@ -1,3 +1,6 @@
+#### 6.0
+* More message types
+
 #### 5.0.1
 * Upgrade to netcoreapp3.1 and improve builds for Rutta
 
