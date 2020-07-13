@@ -180,7 +180,7 @@ module internal Impl =
       Job.unit ()
     else
       job {
-        do api.runtime.logger.debug (sprintf "Maybe creating topic '%s'" conf.topicName)
+        do api.runtime.logger.debug (sprintf "Maybe creating topic '%s'" conf.topicName, fun m -> m.setField("conf", conf))
         use c = AdminClientBuilder(conf.prodConf).Build()
         do api.runtime.logger.debug "Built AdminClient"
         try
