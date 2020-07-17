@@ -53,6 +53,11 @@ module internal Impl =
       |> Json.format
       |> BAD_REQUEST
 
+  let env key =
+    match Environment.GetEnvironmentVariable key with
+    | null | "" -> None
+    | value -> Some value
+
   /// https://github.com/Microsoft/Microsoft.IO.RecyclableMemoryStream
   let private manager = RecyclableMemoryStreamManager(ThrowExceptionOnToArray = true)
 
@@ -85,8 +90,8 @@ module internal Impl =
     cts
 
 type HTTPConfig with
-  static member create(rootPath, ilogger, internalLogary, liveLogary, ?cancelled: Promise<unit>, ?bindings, ?onSuccess, ?onError, ?corsConfig) =
-    { rootPath = rootPath
+  static member create(ilogger, internalLogary, liveLogary, ?cancelled: Promise<unit>, ?bindings, ?onSuccess, ?onError, ?corsConfig, ?rootPath: string) =
+    { rootPath = rootPath |> Option.orElseWith (fun () -> Impl.env "LOGARY_INGESTION_HTTP_ROOT_PATH") |> Option.defaultValue "/"
       ilogger = ilogger
       internalLogary = internalLogary
       liveLogary = liveLogary

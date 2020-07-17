@@ -20,7 +20,7 @@ spec:
       # For example:
       # docker run --rm -p 3000:3000 -it logary/rutta:latest router --listener http '0.0.0.0:3000' json --target console://
       - name: rutta
-        image: logary/rutta:19480b66
+        image: logary/rutta
         imagePullPolicy: Never
 
         args: [ "router",
@@ -35,6 +35,8 @@ spec:
         env:
         - name: LOGARY_RUTTA_ANALYTICS_ID
           value: open-source
+#        - name: LOGARY_INGESTION_HTTP_ROOT_PATH
+#          value: /
 
         ports:
         - name: http-json

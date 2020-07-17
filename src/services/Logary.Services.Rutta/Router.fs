@@ -147,7 +147,7 @@ let httpBind cors (cancelled, ilogger: Logger, internalLogary: LogManager, liveL
 
   let acao = if cors then Some OriginResult.allowAll else None
   let corsConfig = CORSConfig.create(?accessControlAllowOrigin = acao)
-  let config = HTTPConfig.create("/", ilogger, internalLogary, liveLogary, cancelled, bindings, corsConfig=corsConfig)
+  let config = HTTPConfig.create(ilogger, internalLogary, liveLogary, cancelled, bindings, corsConfig=corsConfig)
   let next = createIngest liveLogary codec
   HTTP.create config next
 
