@@ -1,22 +1,24 @@
 ﻿module Logary.Targets.GooglePubSub
 
 open System.Runtime.CompilerServices
+open System.Threading
 open Google.Api.Gax
 open Google.Cloud.PubSub.V1
 open Hopac
 open Hopac.Infixes
 open NodaTime
 open Logary
-open Logary.Message
+open Logary.Model
 open Logary.Internals
 open Logary.Configuration.Target
+module E = Json.Encode
 
 [<assembly:InternalsVisibleTo("Logary.Targets.GooglePubSub.Tests")>]
 do()
 
 type TopicSelector =
   | Constant of topic:string
-  | Selector of selector:(Message -> string)
+  | Selector of selector:(LogaryMessage -> string)
 
 type GooglePubSubConf =
   { projectId: string option
@@ -25,7 +27,7 @@ type GooglePubSubConf =
     pubSettings: PublisherServiceApiSettings
   }
 
-  member x.topicFor (m: Message) =
+  member x.topicFor (m: LogaryMessage) =
     match x.topic with
     | Constant topic ->
       topic
@@ -52,20 +54,14 @@ module internal Impl =
   open System.Security.Cryptography
   open System.Threading.Tasks
   open Google.Protobuf
-  open Logary.Formatting
   open Logary.Internals.Chiron
 
-  let utf8 = Encoding.UTF8
-  let sha1 = HashAlgorithm.Create "SHA1" // 160 bit hash algo
-
-  type Message with
+  type LogaryMessageBase with
     member x.toPubSub() =
+      let jsonStr = Json.serializeObjectWith E.logaryMessage JsonFormattingOptions.Compact x
       let psm = new PubsubMessage()
-      let json = Json.encode x |> Json.formatWith JsonFormattingOptions.Compact
-      let bytes = utf8.GetBytes json
-      let hash = sha1.ComputeHash bytes
-      psm.Data <- ByteString.CopyFromUtf8 json
-      psm.MessageId <- Convert.ToBase64String hash
+      psm.Data <- ByteString.CopyFromUtf8 jsonStr
+      psm.MessageId <- x.id.toBase64String()
       psm
 
   type PublisherClient with
@@ -77,7 +73,13 @@ module internal Impl =
   type State =
     { projectId: string
       clients: Map<Topic, PublisherClient>
+      cts: CancellationTokenSource
     }
+
+    static member create(projectId, ?clients, ?cts) =
+      { projectId=projectId
+        clients=defaultArg clients Map.empty
+        cts=cts |> Option.defaultWith (fun () -> new CancellationTokenSource())}
 
     /// Gets the client for the given topic. The reason this function exists, is that the topic can be dynamically
     /// decided based on the message contents.
@@ -88,13 +90,15 @@ module internal Impl =
       | None ->
         let tn = new TopicName(x.projectId, topic)
         job {
-          let! api = PublisherServiceApiClient.CreateAsync(settings=conf.pubSettings)
+          let! api = PublisherServiceApiClient.CreateAsync(x.cts.Token)
           try
-            logger.verbose (eventX "Getting {topic}" >> setField "topic" tn)
+            logger.verbose("Getting {topic}", fun m -> m.setField("topic", tn.ToString()))
             let! _ = Alt.fromTask <| fun ct -> api.GetTopicAsync(tn, ct)
             ()
           with e ->
-            logger.info (eventX "Creating {topic}. Exn contains error from GetTopic RPC call." >> setField "topic" tn >> addExn e)
+            logger.info("Creating {topic}. Exn contains error from GetTopic RPC call.", fun m ->
+              m.setField("topic", tn.ToString())
+              m.addExn e)
             let _ = api.CreateTopic(tn (* and call settings *))
             ()
 
@@ -112,6 +116,10 @@ module internal Impl =
       |> Seq.toArray
       |> Task.WhenAll
 
+    interface IDisposable with
+      member x.Dispose() =
+        x.cts.Dispose()
+
   let getProjectId (conf: GooglePubSubConf) =
     conf.projectId
     |> Option.map Job.result
@@ -125,15 +133,21 @@ module internal Impl =
     let rec initialise () =
       job {
         let! projectId = getProjectId conf
-        let initialState = { projectId=projectId; clients=Map.empty }
+        let initialState = State.create(projectId)
         match conf.topic with
         | Constant tn ->
           let! nextState, _ = initialState.clientFor (logger, conf) tn
-          do! logger.infoWithBP (eventX "Started GooglePubSub target with project {projectId}, writing to topic=Constant({topic})." >> setField "projectId" projectId >> setField "topic" tn)
-          return! running nextState
+          logger.info(
+            "Started GooglePubSub target with project {projectId}, writing to topic=Constant({topic}).", fun m ->
+            m.setField("projectId", projectId)
+            m.setField("topic", tn))
+          return! Job.using nextState running
+
         | _ ->
-          do! logger.infoWithBP (eventX "Started GooglePubSub target with project {projectId}, writing to topic=Selector(Message -> Topic)." >> setField "projectId" projectId)
-          return! running initialState
+          logger.info(
+            "Started GooglePubSub target with project {projectId}, writing to topic=Selector(Message -> Topic).", fun m ->
+            m.setField("projectId", projectId))
+          return! Job.using initialState running
       }
 
     and running (state: State): Job<_> =
@@ -145,7 +159,7 @@ module internal Impl =
               let! stateNext, client = state.clientFor (logger, conf) topic
               let message = m.toPubSub()
               let! messageId = client.publish message
-              logger.verbose (eventX "Got ack of {messageId}" >> setField "messageId" messageId)
+              logger.verbose ("Got ack of {messageId}", fun m -> m.setField("messageId", messageId))
               do! a *<= ()
               return! running state
             }
@@ -156,6 +170,7 @@ module internal Impl =
         api.shutdownCh ^=> fun ack ->
           timeOut (conf.shutdownTimeout.toTimeSpanSafe()) <|> state.shutdown()
           >>=. ack *<= ()
+
       ] :> Job<_>
 
     initialise ()
@@ -176,7 +191,7 @@ type Builder(conf, callParent: ParentCallback<Builder>) =
   member x.ProjectId(projectId: string) =
     update { conf with projectId = Some projectId }
 
-  member x.TopicSelector (getTopic: Func<Message, string>) =
+  member x.TopicSelector (getTopic: Func<LogaryMessage, string>) =
     update { conf with topic = Selector (fun m -> getTopic.Invoke m) }
 
   member x.Topic (topic: string) =

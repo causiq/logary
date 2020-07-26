@@ -9,9 +9,9 @@ open Hopac.Extensions
 open HttpFs.Client
 open HttpFs.Composition
 open Logary
-open Logary.Message
 open Logary.Internals
 open Logary.Configuration
+open Logary.Model
 
 module Constants =
 
@@ -66,19 +66,19 @@ module Serialise =
 
     static member fieldValue (v: Value) =
       match v with
-      | Float v ->
+      | Value.Float v ->
         Escaped (v.ToString(Culture.invariant))
-      | Int64 v ->
+      | Value.Int64 v ->
         Escaped (v.ToString(Culture.invariant) + "i")
-      | BigInt v ->
+      | Value.BigInt v ->
         if v > bigint Int64.MaxValue then
           Escaped (Int64.MaxValue.ToString(Culture.invariant) + "i")
         elif v < bigint Int64.MinValue then
           Escaped (Int64.MinValue.ToString(Culture.invariant) + "i")
         else
           Escaped (v.ToString(Culture.invariant) + "i")
-      | Fraction _ as v ->
-        Escaped (v.toFloat().ToString(Culture.invariant))
+      | Value.Fraction _ as v ->
+        Escaped (v.asFloat.ToString(Culture.invariant))
 
     static member private escape (nonEscapedString: string) =
       nonEscapedString
@@ -140,7 +140,7 @@ module Serialise =
     | :? string as s -> Some (Escaped.fieldValue s)
     | :? uint16 as i -> Some (Escaped.fieldValue (int64 i))
     | :? uint32 as i -> Some (Escaped.fieldValue (int64 i))
-    | :? uint64 as i -> Some (Escaped.fieldValue (BigInt (bigint i)))
+    | :? uint64 as i -> Some (Escaped.fieldValue (Value.BigInt (bigint i)))
     | :? int16 as i -> Some (Escaped.fieldValue (int64 i))
     | :? int32 as i -> Some (Escaped.fieldValue (int64 i))
     | :? int64 as i -> Some (Escaped.fieldValue i)
@@ -160,9 +160,7 @@ module Serialise =
       |> String.concat ","
       |> Escaped.create
 
-  open Logary.MessagePatterns
-
-  let nameGauges (message: Message) (gauges: Dictionary<string, Escaped * string option * string option>) =
+  let nameGauges (message: LogaryMessageBase) (gauges: IReadOnlyDictionary<string, Escaped * string option * string option>) =
     let inline formatLiteral rawName (v, format: string option, units: string option): (Escaped * Escaped)[] =
       [|
           yield Escaped.fieldKey rawName, v
@@ -180,31 +178,31 @@ module Serialise =
     let singleGaugeAsValue =
       gauges |> Seq.collect (fun (KeyValue (_, x)) -> formatLiteral "value" x)
 
-    match message.name, message.value, gauges.Count with
+    match message.name, message.tryGetAs<EventMessage>(), gauges.Count with
     // Fully empty message
-    | PointName.Empty, template, 0 when String.IsNullOrWhiteSpace template ->
+    | PointName.Empty, Some e, 0 when String.IsNullOrWhiteSpace e.event ->
       Escaped.tagKey "MISSING",
       Seq.singleton (Escaped.create "value", Escaped.create "0")
 
     // Empty event message, the message becomes the measurement
-    | PointName.Empty, template, 0 ->
-      Escaped.tagKey template,
+    | PointName.Empty, Some e, 0 ->
+      Escaped.tagKey e.event,
       Seq.singleton (Escaped.create "value", Escaped.create "1i")
 
     // Event message with sensor/logger/measurement name, otherwise empty,
     // the message becomes an event (this is the regular log message case)
-    | sensor, template, 0 ->
+    | sensor, Some e, 0 ->
       Escaped.tagKey (PointName.format sensor),
       [|
           Escaped.create "value", Escaped.create "1i"
-          Escaped.create "event", Escaped.fieldValue template
+          Escaped.create "event", Escaped.fieldValue e.event
       |]
       :> seq<_>
 
     // Non-empty event/template/message
-    | PointName.Empty, template, 1 when not (String.IsNullOrWhiteSpace template) ->
+    | PointName.Empty, Some e, 1 when not (String.IsNullOrWhiteSpace e.event) ->
       let measurement =
-        PointName.parse template
+        PointName.parse e.event
         |> PointName.setEnding (Seq.head gauges.Keys)
         |> PointName.format
       Escaped.tagKey measurement,
@@ -225,8 +223,8 @@ module Serialise =
       singleGaugeAsValue
 
     // Multi-gauge message with event/template/message.
-    | PointName.Empty, template, n when not (String.IsNullOrWhiteSpace template) ->
-      Escaped.tagKey template,
+    | PointName.Empty, Some e, n when not (String.IsNullOrWhiteSpace e.event) ->
+      Escaped.tagKey e.event,
       allGaugesBut None
 
     // Multi-gauge message without event/template/message; pick first gauge as measurement (??)

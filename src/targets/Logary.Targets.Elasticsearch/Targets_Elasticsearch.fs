@@ -1,16 +1,23 @@
 /// A Logary target for Elasticsearch
 module Logary.Targets.Elasticsearch
 
+open System.Runtime.CompilerServices
+
 #nowarn "1104"
+
+[<assembly:InternalsVisibleTo("Logary.Targets.Elasticsearch.Tests")>]
+do()
 
 open Hopac
 open System
 open System.Security.Cryptography
 open Hopac.Infixes
 open Logary
+open Logary.Model
 open Logary.Configuration
 open Logary.Internals
 open Logary.Internals.Chiron
+module E = Json.Encode
 
 /// This is the default address this Target publishes messages to.
 [<Literal>]
@@ -33,48 +40,32 @@ type ElasticsearchConf =
 
 let empty = ElasticsearchConf.create()
 
-let serialise: Message -> Json =
-  fun message ->
-  let msgJson =
-    match Logary.Formatting.Json.encode message with
-    | Json.Object jsonObj ->
-      jsonObj
-      |> Inference.Json.Encode.required "@version" 2
-      |> Inference.Json.Encode.required "@timestamp" (String (MessageWriter.formatTimestamp message.timestamp))
-      |> JsonObject.toJson
-    | otherwise ->  failwithf "Expected Message to format to Object .., but was %A" otherwise
-
-  msgJson
-
-let serialiseToJsonBytes: Message -> byte [] =
-  serialise
-  >> Json.format
-  >> System.Text.Encoding.UTF8.GetBytes
-
 module internal Impl =
+  let builder: ObjectBuilder<LogaryMessageBase> =
+    fun (m: LogaryMessageBase) ->
+      E.required E.int "@version" 2
+      >> E.required E.dateTimeOffset "@timestamp" (DateTimeOffset.ofEpoch m.timestamp)
+      >> E.requiredMixin E.logaryMessage m
+
+  let encode (m: LogaryMessageBase): Json =
+    E.jsonObjectWith builder m
+
+  let serialise m: string =
+    Json.serializeObjectWith builder JsonFormattingOptions.Compact m
 
   open HttpFs.Client
 
-  let generateId (bytes: byte []) =
-    use sha1 = SHA1.Create ()
-    sha1.ComputeHash bytes
-    |> BitConverter.ToString
-    |> String.replace "-" ""
-
-  let sendToElasticsearch elasticUrl _type indexName (message: Message) =
+  let sendToElasticsearch elasticUrl _type indexName (message: LogaryMessageBase) =
     let _index  = indexName + "-" + DateTime.UtcNow.ToString("yyy-MM-dd")
-    let bytes = serialiseToJsonBytes message
-    let _id = generateId bytes
-    let endpointUrl = elasticUrl + "/" + _index + "/" + _type + "/" + _id
+    let endpointUrl = elasticUrl + "/" + _index + "/" + _type + "/" + (message.id.toBase64String())
     let request =
       Request.createUrl Post endpointUrl
-      |> Request.body (RequestBody.BodyRaw bytes)
+      |> Request.body (RequestBody.BodyString (serialise message))
 
     Request.responseAsString request
     |> Job.Ignore
 
   let loop (conf: ElasticsearchConf) (api: TargetAPI) =
-
     let rec loop (_: unit): Job<unit> =
       Alt.choose [
         api.shutdownCh ^=> fun ack -> job {

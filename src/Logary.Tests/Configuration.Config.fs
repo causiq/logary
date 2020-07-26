@@ -63,9 +63,9 @@ let tests =
     testList "TargetConfig" [
       testCase "create" <| fun () ->
         let uri = Uri "custom://discovery-server:9022/topic-name?a=3&b=4&d=dog"
-        let subject = TargetConfig.create uri
-        subject.name
-          |> Expect.equal "Has name 'console'" "console"
+        Expect.throws
+          "Has no support for custom targets"
+          (fun () -> TargetConfig.create uri |> ignore)
 
       testCase "createWithConfig" <| fun () ->
         let config = schemeToConfAndDefault |> Map.add "custom" dc

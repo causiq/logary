@@ -5,7 +5,6 @@ open Hopac
 open Logary
 open Logary.Tests
 open Logary.Internals
-open Logary.Message
 open Logary.Targets
 open Logary.Targets.BigQuery
 open System
@@ -26,13 +25,18 @@ let target =
       BigQuery.create bigQuery.Value name) true
 
     testCaseJob "send" <| job {
-      let ri = RuntimeInfo.create "tests" "localhost"
+      let ri = RuntimeInfo.ofServiceAndHost "bigquery-tests" "localhost"
       let targetConf = BigQuery.create bigQuery.Value "logary-bigquery"
       let! target = Target.create ri targetConf
 
       for i in 0..20 do
         let! ack =
-          Target.tryLog target (event LogLevel.Error "thing happened at {blah}" |> setField "application" "logary tests" |> setContext "zone" "foobar" |> addExn (raisedExnWithInner "outer exception" (raisedExn "inner exception")))
+          let e = raisedExnWithInner "outer exception" (raisedExn "inner exception")
+          let evt = Model.Event("thing happened at {blah}", None, level=Error)
+          evt.setContext("zone", "foobar")
+          evt.setField("application", "logary tests")
+          evt.addExn e
+          Target.tryLog target evt
         do! ack |> function Ok ack -> ack | Result.Error e -> failtestf "Failure placing in buffer %A" e
 
       do! finalise target

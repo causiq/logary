@@ -195,22 +195,22 @@ module TargetConfig =
 
   let schemeToConfAndDefault =
     [
-      "aliyun",      moduleNameConfigNameAsm "AliYun"
-      "applicationinsights", moduleNameConfigNameAsm "ApplicationInsights"
+      //"aliyun",      moduleNameConfigNameAsm "AliYun"
+      //"applicationinsights", moduleNameConfigNameAsm "ApplicationInsights"
       // TO CONSIDER: re-implement literate console in Logary.Formatting
       // "console",     moduleNameConfigName (modu "LiterateConsole") "Logary" (conf "LiterateConsole")
       "console",     moduleNameConfigName (modu "Console") "Logary" (conf "Console")
       "elasticsearch", moduleNameConfigNameAsm "Elasticsearch"
-      "elmahio",     moduleNameConfigNameAsm "ElmahIO"
-      "influxdb",    moduleNameConfigNameAsm "InfluxDb"
+      //"elmahio",     moduleNameConfigNameAsm "ElmahIO"
+      //"influxdb",    moduleNameConfigNameAsm "InfluxDb"
       "jaeger",      moduleNameConfigNameAsm "Jaeger"
-      "mixpanel",    moduleNameConfigNameAsm "Mixpanel"
-      "rabbitmq",    moduleNameConfigNameAsm "RabbitMQ"
-      "stackdriver", moduleNameConfigNameAsm "Stackdriver"
+      //"mixpanel",    moduleNameConfigNameAsm "Mixpanel"
+      //"rabbitmq",    moduleNameConfigNameAsm "RabbitMQ"
+      //"stackdriver", moduleNameConfigNameAsm "Stackdriver"
       "bigquery",    moduleNameConfigNameAsm "BigQuery"
       "googlepubsub", moduleNameConfigNameAsm "GooglePubSub"
       "shipper",     moduleNameConfigNameAsm "Shipper"
-      "sse",         moduleNameConfigNameAsm "SSE"
+      //"sse",         moduleNameConfigNameAsm "SSE"
       "kafka",       moduleNameConfigNameAsm "Kafka"
     ]
     |> List.map (fun (scheme, (moduleName, configName)) ->

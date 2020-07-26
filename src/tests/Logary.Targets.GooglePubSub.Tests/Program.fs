@@ -3,9 +3,9 @@
 open Expecto
 open Hopac
 open Logary
+open Logary.Model
 open Logary.Tests
 open Logary.Internals
-open Logary.Message
 open Logary.Targets
 open Logary.Targets.GooglePubSub
 open System
@@ -26,16 +26,16 @@ let target =
 
     testCaseJob "send" <| job {
       let targetConf = GooglePubSub.create lazyConf.Value "logary-pubsub"
-      let! target = Target.create (RuntimeInfo.create "tests" "localhost") targetConf
+      let ri = RuntimeInfo.ofServiceAndHost "pubsub-tests" "localhost"
+      let! target = Target.create ri targetConf
 
       for i in 0..20 do
-        let! ack =
-          Target.tryLog target (
-            event LogLevel.Error "thing happened at {blah}"
-              |> setField "application" "logary tests"
-              |> setContext "zone" "foobar"
-              |> addExn (raisedExnWithInner "outer exception" (raisedExn "inner exception"))
-          )
+        let e = raisedExnWithInner "outer exception" (raisedExn "inner exception")
+        let evt = Model.Event("thing happened at {blah}", None, level=Error)
+        evt.setContext("zone", "foobar")
+        evt.setField("application", "logary tests")
+        evt.addExn e
+        let! ack = Target.tryLog target evt
         do! ack |> function Ok ack -> ack | Result.Error e -> failtestf "Failure placing in buffer %A" e
 
       do! Target.flush target

@@ -483,7 +483,7 @@ let logaryMessageReader: ObjectReader<Model.LogaryMessageBase> =
   D.required kind "type" |> Decoder.bind parseByType
 
 let logaryMessage: JsonDecoder<Model.LogaryMessageBase> =
-  D.jsonObject >=> logaryMessageReader
+  D.jsonObjectWith logaryMessageReader
 
 let logaryMessageArray: JsonDecoder<Model.LogaryMessageBase[]> =
   D.arrayWith logaryMessage

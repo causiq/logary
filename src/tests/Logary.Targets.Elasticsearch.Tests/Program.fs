@@ -2,22 +2,14 @@
 
 open System
 open Expecto
+open Expecto.Flip
 open Hopac
 open Logary
+open Logary.Model
 open Logary.Tests
 open Logary.Targets
 open Logary.Internals
 open Logary.Internals.Chiron
-
-let targConf =
-  Elasticsearch.ElasticsearchConf.create()
-
-let start () =
-  let emptyRuntime = RuntimeInfo.create "tests" "localhost"
-  Target.create emptyRuntime (Elasticsearch.create targConf "elasticsearch")
-  |> run
-
-let shutdown t = Target.shutdown t |> run |> run
 
 let raisedExn msg =
   let e = ref None: exn option ref
@@ -25,7 +17,7 @@ let raisedExn msg =
   with ex -> e := Some ex
   (!e).Value
 
-let now = Message.setUTCTicks System.DateTime.UtcNow.Ticks
+let now =  System.DateTime.UtcNow.Ticks
 
 [<Tests>]
 let target =
@@ -33,22 +25,14 @@ let target =
     TargetBaseline.basicTests "Elasticsearch" (Elasticsearch.create Elasticsearch.empty) false
 
     testCase "serialise" <| fun _ ->
-      let e1 = raisedExn "darn"
       let e2 = raisedExn "actual exn"
+      let ctx = Map [ "data-key", Value.Str "data-value"; "tags", Value.Str "integration" ]
+      let fs = Map []
+      let subject = Event("Testing started", None, now, Id.create(), PointName.parse "a.b.c", Info, ctx, fs)
+      subject.addExn(e2)
 
-      let subject =
-        Message.eventWarn "Testing started"
-        |> Message.setName (PointName.ofArray [| "a"; "b"; "c" |])
-        |> Message.setField "data-key" "data-value"
-        |> Message.setField "tags" [ "integration" ]
-        |> Message.setField "e" e1
-        |> Message.setContext "service" "tests"
-        |> Message.addExn e2
-        |> now
-        |> Elasticsearch.serialise
-        |> Json.format
-
-      Expect.equal subject "expected" "should serialise to proper message"
+      Elasticsearch.Impl.serialise subject
+        |> Expect.isNotNull "Has a value"
     ]
 
 [<EntryPoint>]

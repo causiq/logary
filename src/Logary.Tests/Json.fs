@@ -121,11 +121,23 @@ let tests =
       testPropertyWithConfigStdGen (879933225, 296761504) fsc "roundtrip Logary.Currency" (buildRoundtrip (E.currency, D.currency))
       testRoundtrip None (E.units, D.units)
       testPropertyWithConfig fsc "can generate Model.Event" <| fun (e: Model.Event) -> ignore e
-      testDecode None (D.eventMessage clock) (fun () -> Json.parse """{"event":"Hello world"}""" |> JsonResult.getOrThrow)
-      testDecode (Some " simplest") (D.eventMessage clock) (fun () -> Json.parse """{"event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}""" |> JsonResult.getOrThrow)
+      testDecode None (D.eventMessage clock) (fun () -> Json.parse """{"type":"event","event":"Hello world"}""" |> JsonResult.getOrThrow)
+      testDecode (Some " simplest") (D.eventMessage clock) (fun () -> Json.parse """{"type":"event","event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}""" |> JsonResult.getOrThrow)
+
       testDecode (Some " w ts") (D.eventMessage clock) (fun () -> E.eventMessage (Model.Event("Hello world 3")))
+
       // TODO: support control characters in FsParsec; this test hangs .Net Core inside F# Core
       //ptestDecode (Some " eventmessage.1.json") (D.eventMessage clock) (fun () -> File.ReadAllText "sample-data/eventmessage.1.json" |> Json.parse |> JsonResult.getOrThrow)
+
+      testCase "decode logary message" <| fun () ->
+        let res =
+          Json.parse """{"type":"event","event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}"""
+            |> JsonResult.bind D.logaryMessage
+            |> JsonResult.map (fun m -> m.getAsOrThrow<EventMessage>())
+            |> JsonResult.getOrThrow
+
+        res.event
+          |> Expect.equal "Has event" "Hello world 2"
     ]
 
     testList "offset date time" [

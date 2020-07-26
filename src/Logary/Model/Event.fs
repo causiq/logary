@@ -55,6 +55,8 @@ type Event(event, monetaryValue, ?timestamp, ?messageId, ?name, ?level, ?ctx, ?f
   member val monetaryValue = monetaryValue with get, set
   member val error = error with get, set
 
+  override x.ToString() = sprintf "event=\"%s\" [Logary.Model.Event]" x.event
+
   interface Logary.EventMessage with
     member x.event = x.event
     member x.monetaryValue = x.monetaryValue

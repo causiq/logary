@@ -6,3 +6,4 @@ Argu
 fszmq
 FsPickler
 Expecto
+Expecto.Hopac

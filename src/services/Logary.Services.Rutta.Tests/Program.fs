@@ -10,7 +10,7 @@ let tests =
     for (KeyValue (k, _)) in TargetConfig.schemeToConfAndDefault do
       yield testCase (sprintf "create target config for %s" k) <| fun () ->
         TargetConfig.create (Uri (sprintf "%s://./" k))
-        |> ignore
+          |> ignore
   ]
 
 [<EntryPoint>]

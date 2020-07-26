@@ -5,7 +5,6 @@ open NodaTime
 open Hopac
 open Hopac.Infixes
 open Logary
-open Logary.Message
 open Logary.Configuration
 open Logary.Internals
 open RabbitMQ.Client
