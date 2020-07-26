@@ -15,7 +15,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="k8s\**\*" />
-    <Compile Include="RuttaInteractive.fsx" />
+    <None Include="RuttaInteractive.fsx" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="PrefixedEnvVarReader.fs" />
     <Compile Include="Topshelf.fs" />

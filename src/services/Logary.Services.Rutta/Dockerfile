@@ -16,14 +16,16 @@ COPY .config ./.config
 COPY Makefile paket.dependencies paket.lock ./
 
 # First restore 'paket', then restore the packages/ folder
-RUN dotnet tool restore && dotnet paket restore
+RUN dotnet tool restore && \
+    dotnet paket restore && \
+    dotnet restore -c release -r linux-musl-x64 src/services/Logary.Services.Rutta
 
 # Copy the remainder
 COPY . .
 
 # Will do `dotnet restore`, too
 RUN make version_files && \
-    dotnet publish -c release -r linux-musl-x64 src/services/Logary.Services.Rutta -o /app
+    dotnet publish --no-restore -c release -r linux-musl-x64 src/services/Logary.Services.Rutta -o /app
 
 # Now, copy all targets to Logary Rutta, so they are available
 RUN find 'src/targets' -type f \
