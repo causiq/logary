@@ -15,17 +15,21 @@ RUN apk add --no-cache --update alpine-sdk zeromq protobuf protobuf-dev ca-certi
 COPY .config ./.config
 COPY Makefile paket.dependencies paket.lock ./
 
+# Tried to optimise restore, but like all things MSFT it's not built to hack
+#COPY .tmp .
+
 # First restore 'paket', then restore the packages/ folder
 RUN dotnet tool restore && \
-    dotnet paket restore && \
-    dotnet restore -c release -r linux-musl-x64 src/services/Logary.Services.Rutta
+    dotnet paket restore
 
-# Copy the remainder
+# Tried to optimise restore, but like all things MSFT it's not built to hack
+#&& \
+#dotnet restore -r linux-musl-x64 src/services/Logary.Services.Rutta/Logary.Services.Rutta.fsproj
+
 COPY . .
 
-# Will do `dotnet restore`, too
 RUN make version_files && \
-    dotnet publish --no-restore -c release -r linux-musl-x64 src/services/Logary.Services.Rutta -o /app
+    dotnet publish -c release -r linux-musl-x64 src/services/Logary.Services.Rutta -o /app
 
 # Now, copy all targets to Logary Rutta, so they are available
 RUN find 'src/targets' -type f \

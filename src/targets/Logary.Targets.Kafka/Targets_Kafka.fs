@@ -121,13 +121,22 @@ module internal Impl =
         member x.Serialize(data, context): byte[] = data.toByteArray()
     }
 
+  let serialise message =
+    Json.Encode.logaryMessageBase message
+      |> Json.formatWith JsonFormattingOptions.Compact
+      |> Encoding.UTF8.GetBytes
+
+  let valueSerializer: ISerializer<LogaryMessageBase> =
+    { new ISerializer<LogaryMessageBase> with
+        member x.Serialize(message,context): byte[] =
+          serialise message
+    }
+
   // TO CONSIDER: how do we handle this?
-  let valueSerializer: IAsyncSerializer<LogaryMessageBase> =
+  let asyncValueSerializer: IAsyncSerializer<LogaryMessageBase> =
     { new IAsyncSerializer<LogaryMessageBase> with
         member x.SerializeAsync(message, context): Task<byte[]> =
-          Json.Encode.logaryMessageBase message
-            |> Json.formatWith JsonFormattingOptions.Compact
-            |> Encoding.UTF8.GetBytes
+          serialise message
             |> Task.FromResult
     }
 

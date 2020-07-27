@@ -49,6 +49,13 @@ nuget elmah.io.core
 nuget fszmq
 nuget protobuf-net
 
+
+# nuget Microsoft.AspNetCore.Grpc.HttpApi ~> 0.1.0-alpha
+# nuget Microsoft.AspNetCore.Grpc.Swagger ~> 0.1.0-alpha
+# nuget Grpc.Tools 2.28 strategy: min
+# nuget Grpc.AspNetCore 2.28 strategy: min
+# nuget Grpc 2.28 strategy: min
+nuget Google.Api.CommonProtos strategy: min
 nuget Google.Api.Gax.Rest strategy: min
 nuget Google.Cloud.Logging.V2 strategy: min
 nuget Google.Cloud.BigQuery.V2 strategy: min

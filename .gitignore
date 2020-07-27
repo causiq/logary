@@ -6,6 +6,7 @@
 *.user
 *.userprefs
 .DS_Store
+.tmp/
 .fake/
 .idea/
 .vs/
