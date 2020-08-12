@@ -164,7 +164,7 @@ with
         "Prints version information."
       | Verbose ->
         "Enables verbose logging while running Rutta. Useful for debugging your setup."
-      | Analytics_Id ->
+      | Analytics_Id _ ->
         "Sets your Logary Analytics Id for purposes of using the Analytics license of yours."
       | Proxy _ ->
         "Rutta in Proxy mode, does transparent forwarding of data between e.g. two subnets."
