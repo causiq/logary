@@ -1,4 +1,4 @@
-Copyright 2018 Henrik Feldt, Jun and contributors.
+Copyright 2020 Henrik Feldt, Jun and contributors.
 
 Logary is the collective name for:
 
