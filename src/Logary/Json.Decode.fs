@@ -2,6 +2,7 @@
 module Logary.Json.Decode
 
 open System.Collections.Generic
+open System.Text.RegularExpressions
 open NodaTime
 open Logary
 open Logary.Trace
@@ -40,7 +41,8 @@ let resource: JsonDecoder<Model.Resource> =
 let pointName: JsonDecoder<PointName> =
   let ofString = PointName.parse <!> D.string
   let ofArray  = PointName.ofArray <!> D.arrayWith D.string
-  D.either ofString ofArray
+  D.eitherNamed ("pointName string", ofString)
+                ("pointName array of string", ofArray)
 
 let idDecoder: JsonDecoder<Id> =
   Id.ofBase64String <!> D.string
@@ -76,9 +78,13 @@ let spanStatus: JsonDecoder<SpanStatus> =
   let intDecoder =
     spanCode |> Decoder.map (fun c -> c, None)
 
-  D.either intDecoder (D.jsonObjectWith objectDecoder)
+  D.eitherNamed ("spanStatus int", intDecoder)
+                ("spanStatus {code,description}", D.jsonObjectWith objectDecoder)
+
 let level: JsonDecoder<LogLevel> =
-  LogLevel.ofString <!> D.string
+  D.either (LogLevel.ofString <!> D.string)
+           (LogLevel.ofInt <!> D.int)
+
 
 let value: JsonDecoder<Value> =
   let decodeObject =
@@ -193,7 +199,8 @@ let rec units: JsonDecoder<U> =
   let objD =
     D.jsonObject >=> (DI.required "type" |> Decoder.bind inner)
 
-  D.either stringD objD
+  D.eitherNamed ("unit string", stringD)
+                ("unit object", objD)
 
 let gauge: JsonDecoder<Gauge> =
   let inner (_: string) =
@@ -201,6 +208,17 @@ let gauge: JsonDecoder<Gauge> =
     <!> D.required value "value"
     <*> D.required units "unit"
   D.jsonObject >=> (DI.required "type" |> Decoder.bind inner)
+
+let money: JsonDecoder<Money> =
+  let case1 =
+    let inner =
+          fun (a: float) c -> Gauge (Value.Float a, U.Currency c)
+      <!> D.required D.float "amount"
+      <*> D.required currency "currency"
+    D.jsonObject >=> inner
+
+  D.eitherNamed ("money {amount,currency} simple object", case1)
+                ("money {type,value,unit} Gauge object", gauge)
 
 let traceContext: JsonDecoder<IReadOnlyDictionary<string, string>> =
   D.mapWith D.string |> Decoder.map (fun m -> m :> IReadOnlyDictionary<string, string>)
@@ -286,8 +304,8 @@ let errorInfo: JsonDecoder<ErrorInfo> =
   and decoder (): JsonDecoder<ErrorInfo> =
     D.jsonObjectWith (objectReader ())
 
-  D.either (D.string >=> stringDecoder)
-           (decoder ())
+  D.eitherNamed ("errorInfo of string", D.string >=> stringDecoder)
+                ("errorInfo of {message,errorType,stackTrace,inner} nested JSON", decoder ())
 
 let errorInfos = D.arrayWith errorInfo
 
@@ -304,34 +322,61 @@ let numericTimestamp (minI, maxI): JsonDecoder<EpochNanoSeconds> =
   D.int64 |> Decoder.map loop
 
 let stringTimestamp: JsonDecoder<EpochNanoSeconds> =
-  D.offsetDateTime |> Decoder.map (fun odt -> odt.asTimestamp)
+  let isoString = D.offsetDateTime |> Decoder.map (fun odt -> odt.asTimestamp)
+  function
+  | String s when Regex.IsMatch(s, "\d{19,21}") ->
+    System.Int64.Parse(s, Culture.invariant)
+      |> JsonResult.pass
+  | json ->
+    isoString json
+      |> JsonResult.tagOnFail (PropertyTag "timestamp / isoString")
 
 let foldIntoBase (clock: IClock) (acc: #Model.LogaryMessageBase) (key: string, json: Json): JsonResult<#Model.LogaryMessageBase> =
   match key with
   | "id" ->
-    D.either idDecoder idHex json |> JsonResult.map (fun mId -> acc.id <- mId; acc)
+    D.eitherNamed ("id of base64", idDecoder)
+                  ("id of hex", idHex)
+                  json
+      |> JsonResult.map (fun mId -> acc.id <- mId; acc)
+      |> JsonResult.tagOnFail (PropertyTag "id")
   | "parentSpanId" ->
-    D.either spanId spanIdHex json |> JsonResult.map (fun spanId -> acc.parentSpanId <- Some spanId; acc)
+    D.eitherNamed ("parentSpanId of base64", spanId)
+                  ("parentSpanId of hex", spanIdHex)
+                  json
+      |> JsonResult.map (fun spanId -> acc.parentSpanId <- Some spanId; acc)
+      |> JsonResult.tagOnFail (PropertyTag "parentSpanId")
   | "name" ->
-    pointName json |> JsonResult.map (fun name -> acc.name <- name; acc)
+    pointName json
+      |> JsonResult.map (fun name -> acc.name <- name; acc)
+      |> JsonResult.tagOnFail (PropertyTag "name")
   | "level" ->
-    level json |> JsonResult.map (fun level -> acc.level <- level; acc)
+    level json
+      |> JsonResult.map (fun level -> acc.level <- level; acc)
+      |> JsonResult.tagOnFail (PropertyTag "level")
   | "timestamp" ->
     let now = clock.GetCurrentInstant()
     let minI, maxI = now - Duration.FromDays(365 * 2), now + Duration.FromDays(365 * 2)
     let decoder =
       match json with
-      | Json.Number _ ->
+      | Number _ ->
         numericTimestamp (minI, maxI)
       | _ ->
         stringTimestamp
-    decoder json |> JsonResult.map (fun ts -> acc.timestamp <- ts; acc)
+    decoder json
+      |> JsonResult.map (fun ts -> acc.timestamp <- ts; acc)
+      |> JsonResult.tagOnFail (PropertyTag "timestamp")
   | "context" ->
-    D.mapWith value json |> JsonResult.map (fun c -> acc.setContextValues c; acc)
+    D.mapWith value json
+      |> JsonResult.map (fun c -> acc.setContextValues c; acc)
+      |> JsonResult.tagOnFail (PropertyTag "context")
   | "fields" ->
-    D.mapWith value json |> JsonResult.map (fun fs -> acc.setFieldValues fs; acc)
+    D.mapWith value json
+      |> JsonResult.map (fun fs -> acc.setFieldValues fs; acc)
+      |> JsonResult.tagOnFail (PropertyTag "fields")
   | "gauges" ->
-    D.mapWith gauge json |> JsonResult.map (fun gs -> acc.setGaugeValues gs; acc)
+    D.mapWith gauge json
+      |> JsonResult.map (fun gs -> acc.setGaugeValues gs; acc)
+      |> JsonResult.tagOnFail (PropertyTag "gauges")
   | _ ->
     JsonResult.pass acc
 
@@ -344,14 +389,15 @@ let internal logaryMessageWith clock ctorDecoder ctorFactory =
       |> JsonResult.map ctorFactory
       |> JsonResult.bind (fun m -> JsonResult.foldBind folder m (JsonObject.toPropertyList jObj))
 
-
 let eventMessageReader clock: ObjectReader<Logary.Model.Event> =
   let ctorDecoder =
-        fun e m -> e, m
+        fun e m error -> e, m, error
     <!> D.required D.string "event"
-    <*> D.optional gauge "monetaryValue"
+    <*> D.eitherNamed ("simple monetaryValue", D.optional money "monetaryValue") ("default None", D.always None)
+    <*> D.eitherNamed ("errorInfo", D.optional errorInfo "error") ("default None", D.always None)
 
-  logaryMessageWith clock ctorDecoder (fun (event, monetaryValue) -> Model.Event(event, monetaryValue))
+  logaryMessageWith clock ctorDecoder (fun (event, monetaryValue, error) ->
+      Model.Event(event, monetaryValue, ?error=error))
 
 let eventMessage (clock: IClock): JsonDecoder<Logary.Model.Event> =
   D.jsonObjectWith (eventMessageReader clock)
@@ -441,7 +487,8 @@ let identifyUserMessageReader clock: ObjectReader<Model.IdentifyUserMessage> =
     <!> D.required D.string "prevUserId"
     <*> D.required D.string "newUserId"
 
-  logaryMessageWith clock ctorDecoder (fun (prevUserId, newUserId) -> Model.IdentifyUserMessage(prevUserId, newUserId))
+  logaryMessageWith clock ctorDecoder (fun (prevUserId, newUserId) ->
+    Model.IdentifyUserMessage(prevUserId, newUserId))
 
 
 let identifyUserMessage (clock: IClock): JsonDecoder<Model.IdentifyUserMessage> =
@@ -489,5 +536,5 @@ let logaryMessageArray: JsonDecoder<Model.LogaryMessageBase[]> =
   D.arrayWith logaryMessage
 
 let messageBatch: JsonDecoder<Model.LogaryMessageBase[]> =
-  D.either (logaryMessage |> Decoder.map Array.singleton)
-           logaryMessageArray
+  D.eitherNamed ("single message", logaryMessage |> Decoder.map Array.singleton)
+                ("batch of message", logaryMessageArray)

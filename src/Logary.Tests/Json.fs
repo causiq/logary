@@ -138,6 +138,16 @@ let tests =
 
         res.event
           |> Expect.equal "Has event" "Hello world 2"
+
+      testCase "decode Logary JS message" <| fun () ->
+        let res =
+          Json.parse """[{"event":"Foobar purchased","monetaryValue":{"amount":20,"currency":"EUR"},"error":null,"level":3,"timestamp":"1598451184415000000","fields":{},"context":{},"name":["with-nextjs","IndexPage"],"type":"event","templated":{"message":"Foobar purchased","consumed":[],"remaining":[]},"id":"cvTF3jralDI9861r1uR7Slr98AacANHynnxY2s/7VAA="},{"event":"User clicked \"{cssSelector}\"","monetaryValue":null,"error":null,"level":3,"timestamp":"1598451184417000000","fields":{"cssSelector":"html body div#__next div#layout button#purchase.primary"},"context":{},"name":["with-nextjs","plugins","browser","onClick"],"type":"event","templated":{"message":"User clicked \"html body div#__next div#layout button#purchase.primary\"","consumed":[{"key":"cssSelector","value":"html body div#__next div#layout button#purchase.primary"}],"remaining":[]},"id":"MtUGNmFDBdcCu60taBlfj9WeI2BH19RxvRcHKuxMMPI="}]"""
+            |> JsonResult.bind D.messageBatch
+            |> JsonResult.map (fun m -> m |> Array.map (fun mm -> mm.getAsOrThrow<EventMessage>()) |> Array.head)
+            |> JsonResult.getOrThrow
+
+        res.event
+          |> Expect.equal "Should be 'Foobar purchased'" "Foobar purchased"
     ]
 
     testList "offset date time" [

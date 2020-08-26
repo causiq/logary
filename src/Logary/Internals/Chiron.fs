@@ -62,6 +62,7 @@ type JsonFailureTag =
     | PropertyTag of propertyName: string
     | IndexTag of index: uint32
     | ChoiceTag of choice: uint32
+    | CaseTag of case: string
 type JsonFailureReason =
     | OtherError of err: exn
     | MessageTypeUnknown of name: string
@@ -89,12 +90,14 @@ module JsonFailureTag =
         | PropertyTag p -> p
         | IndexTag i -> System.String.Concat ("[", string i, "]")
         | ChoiceTag c -> System.String.Concat ("(Choice #", string (c + 1u), ")")
+        | CaseTag case -> System.String.Concat ("(Case \"", case, "\")")
 
     let toTagPathString prefixO tag =
         match prefixO, tag with
         | Some prefix, PropertyTag p -> System.String.Concat (prefix, ".", p)
         | Some prefix, IndexTag i -> System.String.Concat (prefix, "[", string i, "]")
         | Some prefix, ChoiceTag c -> System.String.Concat (prefix, "(Choice #", string (c + 1u), ")")
+        | Some prefix, CaseTag c -> System.String.Concat (prefix, "(Case \"", c, "\")")
         | None, _ -> toString tag
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -158,6 +161,11 @@ module JsonResult =
     let noInput<'a> : JsonResult<'a> = fail (SingleFailure NoInput)
     let messageTypeUnknown f : JsonResult<'a> = fail (SingleFailure (MessageTypeUnknown f))
     let failWithTag t f : JsonResult<'a> = fail (Tagged (t, f))
+    let tagOnFail t xR =
+      match xR with
+      | JFail f -> failWithTag t f
+      | other -> other
+
 
     let inline bind (a2bR: 'a -> JsonResult<'b>) (aR : JsonResult<'a>) : JsonResult<'b> =
         match aR with
@@ -320,6 +328,12 @@ module Decoder =
             match s2aR s with
             | JPass a -> JsonResult.pass a
             | JFail f -> JsonResult.failWithTag (ChoiceTag c) f
+
+    let withCaseTag c (s2aR : Decoder<'s,'a>) : Decoder<'s,'a> =
+        fun s ->
+            match s2aR s with
+            | JPass a -> JsonResult.pass a
+            | JFail f -> JsonResult.failWithTag (CaseTag c) f
 
     let inline fromThrowingConverter (convert: 's -> 'a) : Decoder<'s,'a> =
         fun s ->
@@ -1253,6 +1267,16 @@ module Serialization =
             let delayWith (x2aD: 'x -> Decoder<'s,'a>) (x: 'x): Decoder<'s,'a> =
                 let lazified = lazy (x2aD x)
                 lazily lazified
+
+            let eitherNamed (nameCaseA, decodeA: Decoder<'s, 'a>) (nameCaseB, decodeB: Decoder<'s, 'a>) =
+                fun s ->
+                    match Decoder.withCaseTag nameCaseA decodeA s with
+                    | (JPass _) as goodResult -> goodResult
+                    | JFail errs1 ->
+                        match Decoder.withCaseTag nameCaseB decodeB s with
+                        | (JPass _) as goodResult -> goodResult
+                        | JFail errs2 ->
+                            JsonResult.fail (JsonFailure.mappend errs1 errs2)
 
             let either (decodeA: Decoder<'s,'a>) (decodeB: Decoder<'s,'a>) =
                 fun s ->

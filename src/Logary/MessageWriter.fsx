@@ -43,7 +43,7 @@ type PathCMD =
   | CurveTo of curve: CurveCMD * relative: bool
   /// Z: connect back to the 'initial point'
   | ClosePath
-  member x.isSegment = match x with MoveTo | ClosePath -> false | _ -> true
+  member x.isSegment = match x with MoveTo _ | ClosePath -> false | _ -> true
 
 type Contents =
   | Text of text: string
