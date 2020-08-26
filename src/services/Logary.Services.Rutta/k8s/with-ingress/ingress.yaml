@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: rutta
+
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /i/logary
+        pathType: Prefix
+        backend:
+          serviceName: rutta
+          servicePort: http-json
