@@ -9,6 +9,9 @@ resources:
 
 # you'll need to add `istio-system/ingress` to take in external traffic and use this folder
 
+patchesStrategicMerge:
+- deployment.yaml
+
 commonLabels:
   app: logary
   component: rutta
