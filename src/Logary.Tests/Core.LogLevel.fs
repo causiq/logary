@@ -6,8 +6,8 @@ open Logary
 [<Tests>]
 let tests =
   testList "log level" [
-    testProperty "toInt" <| fun (level: LogLevel) ->
-      level.toInt() |> ignore
+    testProperty "asInt" <| fun (level: LogLevel) ->
+      level.asInt |> ignore
 
     testProperty "=" <| fun (level: LogLevel) ->
       level = level

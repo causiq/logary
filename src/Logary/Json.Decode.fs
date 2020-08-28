@@ -44,21 +44,41 @@ let pointName: JsonDecoder<PointName> =
   D.eitherNamed ("pointName string", ofString)
                 ("pointName array of string", ofArray)
 
-let idDecoder: JsonDecoder<Id> =
-  Id.ofBase64String <!> D.string
+let idB64: JsonDecoder<Id> =
+  D.string >=> fun s ->
+  match Id.tryOfBase64String s with
+  | None ->
+    JsonResult.invalidJson (sprintf "'%s' as a base64 string didn't convert to 16 bytes" s)
+  | Some res ->
+    JsonResult.pass res
 
 let idHex: JsonDecoder<Id> =
-  Id.ofString <!> D.string
+  D.string >=> fun s ->
+  match Id.tryOfString s with
+  | None ->
+    JsonResult.invalidJson (sprintf "'%s' wasn't a 16 char long hex string" s)
+  | Some res ->
+    JsonResult.pass res
 
-let traceId: JsonDecoder<TraceId> = idDecoder
 
+let traceIdB64: JsonDecoder<TraceId> = idB64
 let traceIdHex: JsonDecoder<TraceId> = idHex
 
-let spanId: JsonDecoder<SpanId> =
+let traceId: JsonDecoder<TraceId> =
+  D.eitherNamed ("TraceId b64", traceIdB64)
+                ("TraceId hex", traceIdHex)
+
+
+let spanIdB64: JsonDecoder<SpanId> =
   SpanId.ofBase64String <!> D.string
 
 let spanIdHex: JsonDecoder<SpanId> =
   SpanId.ofString <!> D.string
+
+let spanId: JsonDecoder<SpanId> =
+  D.eitherNamed ("SpanId b64", spanIdB64)
+                ("SpanId hex", spanIdHex)
+
 
 let spanFlags: JsonDecoder<SpanFlags> =
   enum<SpanFlags> <!> D.int
@@ -234,13 +254,16 @@ let traceState: JsonDecoder<TraceState> =
 
 let spanContext: JsonDecoder<SpanContext> =
   let decode =
-        fun tc ts s t ps f -> SpanContext(t, s, ps, f, ?traceState=ts, ?traceContext=tc)
+        fun tc ts s t ps sf tf ->
+          let f = sf |> Option.orElse tf |> Option.defaultValue SpanFlags.Sampled // after all, it's here, isn't it?
+          SpanContext(t, s, ps, f, ?traceState=ts, ?traceContext=tc)
     <!> D.optional traceContext "traceContext"
     <*> D.optional traceState "traceState"
     <*> D.required spanId "spanId"
     <*> D.required traceId "traceId"
     <*> D.optional spanId "parentSpanId"
-    <*> D.required spanFlags "flags"
+    <*> D.optional spanFlags "flags"
+    <*> D.optional spanFlags "traceFlags"
   D.jsonObjectWith decode
 
 let spanLink: JsonDecoder<SpanLink> =
@@ -331,10 +354,22 @@ let stringTimestamp: JsonDecoder<EpochNanoSeconds> =
     isoString json
       |> JsonResult.tagOnFail (PropertyTag "timestamp / isoString")
 
+let timestamp (clock: IClock): JsonDecoder<EpochNanoSeconds> =
+  fun json ->
+    let now = clock.GetCurrentInstant()
+    let minI, maxI = now - Duration.FromDays(365 * 2), now + Duration.FromDays(365 * 2)
+    let decoder =
+      match json with
+      | Number _ ->
+        numericTimestamp (minI, maxI)
+      | _ ->
+        stringTimestamp
+    decoder json
+
 let foldIntoBase (clock: IClock) (acc: #Model.LogaryMessageBase) (key: string, json: Json): JsonResult<#Model.LogaryMessageBase> =
   match key with
   | "id" ->
-    D.eitherNamed ("id of base64", idDecoder)
+    D.eitherNamed ("id of base64", idB64)
                   ("id of hex", idHex)
                   json
       |> JsonResult.map (fun mId -> acc.id <- mId; acc)
@@ -354,29 +389,25 @@ let foldIntoBase (clock: IClock) (acc: #Model.LogaryMessageBase) (key: string, j
       |> JsonResult.map (fun level -> acc.level <- level; acc)
       |> JsonResult.tagOnFail (PropertyTag "level")
   | "timestamp" ->
-    let now = clock.GetCurrentInstant()
-    let minI, maxI = now - Duration.FromDays(365 * 2), now + Duration.FromDays(365 * 2)
-    let decoder =
-      match json with
-      | Number _ ->
-        numericTimestamp (minI, maxI)
-      | _ ->
-        stringTimestamp
-    decoder json
+    timestamp clock json
       |> JsonResult.map (fun ts -> acc.timestamp <- ts; acc)
       |> JsonResult.tagOnFail (PropertyTag "timestamp")
+
   | "context" ->
     D.mapWith value json
       |> JsonResult.map (fun c -> acc.setContextValues c; acc)
       |> JsonResult.tagOnFail (PropertyTag "context")
+
   | "fields" ->
     D.mapWith value json
       |> JsonResult.map (fun fs -> acc.setFieldValues fs; acc)
       |> JsonResult.tagOnFail (PropertyTag "fields")
+
   | "gauges" ->
     D.mapWith gauge json
       |> JsonResult.map (fun gs -> acc.setGaugeValues gs; acc)
       |> JsonResult.tagOnFail (PropertyTag "gauges")
+
   | _ ->
     JsonResult.pass acc
 
@@ -434,48 +465,93 @@ let histogramMessage (clock: IClock): JsonDecoder<Model.HistogramMessage> =
 let foldSpan (clock: IClock) (m: Model.SpanMessage) (key: string, json: Json): JsonResult<Model.SpanMessage> =
   match key with
   | "label" ->
-    D.string json |> JsonResult.map (fun label -> m.label <- label; m)
-  | "traceId" ->
-    traceId json |> JsonResult.map (fun traceId -> m.context <- m.context.withTraceId traceId; m)
-  | "spanId" ->
-    spanId json |> JsonResult.map (fun spanId -> m.context <- m.context.withSpanId spanId; m)
-  | "parentSpanId" ->
-    spanId json |> JsonResult.map (fun parentSpanId -> m.context <- m.context.withParentId (Some parentSpanId); m)
+    D.string json
+      |> JsonResult.map (fun label -> m.label <- label; m)
+      |> JsonResult.tagOnFail (PropertyTag "label")
+
+  | "traceId" -> // part of spanContext
+    traceId json
+      |> JsonResult.map (fun traceId -> m.context <- m.context.withTraceId traceId; m)
+      |> JsonResult.tagOnFail (PropertyTag "traceId")
+
+  | "spanId" -> // part of spanContext
+    spanId json
+      |> JsonResult.map (fun spanId -> m.context <- m.context.withSpanId spanId; m)
+      |> JsonResult.tagOnFail (PropertyTag "spanId")
+
+  | "parentSpanId" -> // part of spanContext
+    spanId json
+      |> JsonResult.map (fun parentSpanId -> m.context <- m.context.withParentId (Some parentSpanId); m)
+      |> JsonResult.tagOnFail (PropertyTag "spanId")
+
+  | "spanContext" ->
+    spanContext json
+      |> JsonResult.map (fun sc -> m.context <- sc; m)
+      |> JsonResult.tagOnFail (PropertyTag "spanContext")
+
   | "traceState" ->
     JsonResult.pass m // TODO: W3C parser on: D.string |> JsonResult.bind (parse W3C.traceState >> JsonResult.ofParseResult)
+
   | "traceContext" ->
-    traceContext json |> JsonResult.map (fun tc -> m.context <- m.context.withContext tc; m)
+    traceContext json
+      |> JsonResult.map (fun tc -> m.context <- m.context.withContext tc; m)
+      |> JsonResult.tagOnFail (PropertyTag "traceContext")
+
   | "kind" ->
-    spanKind json |> JsonResult.map (fun kind -> m.spanKind <- kind; m)
+    spanKind json
+      |> JsonResult.map (fun kind -> m.spanKind <- kind; m)
+      |> JsonResult.tagOnFail (PropertyTag "kind")
+
   | "started" ->
-    let now = clock.GetCurrentInstant()
-    let minI, maxI = now - Duration.FromDays(365 * 2), now + Duration.FromDays(365 * 2)
-    numericTimestamp (minI, maxI) json |> JsonResult.map (fun started -> m.started <- started; m)
+    timestamp clock json
+      |> JsonResult.map (fun started -> m.started <- started; m)
+      |> JsonResult.tagOnFail (PropertyTag "started")
+
   | "finished" ->
-    let now = clock.GetCurrentInstant()
-    let minI, maxI = now - Duration.FromDays(365 * 2), now + Duration.FromDays(365 * 2)
-    numericTimestamp (minI, maxI) json |> JsonResult.map (fun finished -> m.finished <- Some finished; m)
+    timestamp clock json
+      |> JsonResult.map (fun finished -> m.finished <- Some finished; m)
+      |> JsonResult.tagOnFail (PropertyTag "finished")
+
   | "flags" ->
-    spanFlags json |> JsonResult.map (fun flags -> m.flags <- flags; m)
+    spanFlags json
+      |> JsonResult.map (fun flags -> m.flags <- flags; m)
+      |> JsonResult.tagOnFail (PropertyTag "flags")
+
   | "links" ->
-    D.arrayWith spanLink json |> JsonResult.map (fun links -> m.setLinks links; m)
+    D.arrayWith spanLink json
+      |> JsonResult.map (fun links -> m.setLinks links; m)
+      |> JsonResult.tagOnFail (PropertyTag "links")
+
   | "events" ->
-    D.arrayWith (eventMessageInterface clock) json |> JsonResult.map (fun es -> m.setEvents es; m)
+    D.arrayWith (eventMessageInterface clock) json
+      |> JsonResult.map (fun es -> m.setEvents es; m)
+      |> JsonResult.tagOnFail (PropertyTag "events")
+
   | "attrs" ->
-    D.mapWith value json |> JsonResult.map (fun attrs -> m.setAttributes attrs; m)
+    D.mapWith value json
+      |> JsonResult.map (fun attrs -> m.setAttributes attrs; m)
+      |> JsonResult.tagOnFail (PropertyTag "attrs")
+
   | "status" ->
-    spanStatus json |> JsonResult.map (fun s -> m.status <- s; m)
+    spanStatus json
+      |> JsonResult.map (fun s -> m.status <- s; m)
+      |> JsonResult.tagOnFail (PropertyTag "status")
+
   | _ ->
     JsonResult.pass m
 
 
 let spanMessageReader clock: ObjectReader<Model.SpanMessage> =
   let folder m = foldSpan clock m
-  fun jObj ->
-    let m = Model.SpanMessage()
-    jObj
-      |> JsonObject.toPropertyList
-      |> JsonResult.foldBind folder m
+
+  let ctorDecoder: ObjectReader<Model.SpanMessage> =
+    fun jObj ->
+      let m = Model.SpanMessage()
+      jObj
+        |> JsonObject.toPropertyList
+        |> JsonResult.foldBind folder m
+
+  logaryMessageWith clock ctorDecoder (fun m -> m)
 
 let spanMessage (clock: IClock): JsonDecoder<Model.SpanMessage> =
   D.jsonObjectWith (spanMessageReader clock)

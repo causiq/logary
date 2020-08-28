@@ -36,8 +36,9 @@ type Id with
     { high = BitConverter.ToInt64(bs, 0)
       low = BitConverter.ToInt64(bs, 8) }
 
-  static member ofString (s: string) =
-    if s.Length > 32 then TraceId.Zero else
+  static member tryOfString (s: string) =
+    if s.Length > 32 then None else
+
     let highLen = max 0 (s.Length - 16)
     let high = // "".Substring(0, 0) => ""
       match Int64.TryParse(s.Substring(0, highLen), NumberStyles.HexNumber, null) with
@@ -47,7 +48,14 @@ type Id with
       match Int64.TryParse(s.Substring highLen, NumberStyles.HexNumber, null) with
       | false, _ -> 0L
       | true, low -> low
+
     TraceId.create (high, low)
+      |> Some
+
+  static member ofString (s: string) =
+    Id.tryOfString s
+      |> Option.defaultValue Id.Zero
+
 
 type SpanId with
   static member create (?value: int64) =

@@ -100,7 +100,7 @@ type SpanMessage =
   abstract events: IReadOnlyList<EventMessage>
   /// Gets the attributes of the Span; this is the same as the fields of the LogaryMessage.
   abstract attrs: IReadOnlyDictionary<string, Value>
-  /// Returns the Span's status
+  /// Returns the Span's status, which is the canonical code and an optional description.
   abstract status: SpanStatus
 
 /// Lets you identify a user by associating two user identities together. Useful when you generate a random UserId when

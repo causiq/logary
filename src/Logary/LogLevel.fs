@@ -51,30 +51,31 @@ with
 
   /// Turn the LogLevel into an integer
   [<EditorBrowsable(EditorBrowsableState.Never)>]
-  member x.toInt () =
-    (function
+  member x.asInt =
+    match x with
     | Verbose -> 1
     | Debug   -> 2
     | Info    -> 3
     | Warn    -> 4
     | Error   -> 5
-    | Fatal   -> 6) x
+    | Fatal   -> 6
 
   /// Turn an integer into a LogLevel
   [<EditorBrowsable(EditorBrowsableState.Never)>]
   static member ofInt i =
-    (function
+    match i with
     | 1 -> Verbose
     | 2 -> Debug
     | 3 -> Info
     | 4 -> Warn
     | 5 -> Error
     | 6 -> Fatal
-    | _ as i -> failwithf "LogLevel matching integer %i is not available" i) i
+    | _ ->
+        failwithf "LogLevel matching integer %i is not available" i
 
   interface IComparable<LogLevel> with
     member x.CompareTo other =
-      compare (x.toInt()) (other.toInt())
+      compare x.asInt other.asInt
 
   static member op_LessThan (a, b) =
     (a :> IComparable<LogLevel>).CompareTo(b) < 0
@@ -89,23 +90,21 @@ with
     (a :> IComparable<LogLevel>).CompareTo(b) >= 0
 
   override x.GetHashCode () =
-    x.toInt ()
+    x.asInt
 
   interface IComparable with
     member x.CompareTo other =
       match other with
       | null ->
         1
-
       | :? LogLevel as tother ->
         (x :> IComparable<LogLevel>).CompareTo tother
-
       | _ ->
         failwithf "invalid comparison %A to %A" x other
 
   interface IEquatable<LogLevel> with
     member x.Equals other =
-      x.toInt() = other.toInt()
+      x.asInt = other.asInt
 
   override x.Equals other =
     (x :> IComparable).CompareTo other = 0

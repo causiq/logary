@@ -64,7 +64,7 @@ module internal Impl =
   type LogaryMessage with
     member x.toRow() =
       let row = new BigQueryInsertRow()
-      row.["level"] <- x.level.toInt()
+      row.["level"] <- x.level.asInt
       row.["name"] <- PointName.format x.name
       /// https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp-type
       row.["timestamp"] <- Instant.ofEpoch(x.timestamp).ToString()

@@ -10,6 +10,7 @@ open NodaTime.Text
 let logger = Log.create "Logary.Tests.Json"
 
 open Logary
+open Logary.Trace
 open Logary.Internals
 open Logary.Internals.Chiron
 open Logary.Json
@@ -98,7 +99,7 @@ let tests =
   pair E.gauge D.gauge
   pair E.gaugeMessage (D.gaugeMessage clock)
   pair E.histogramMessage (D.histogramMessage clock)
-  pair E.idEncoder D.idDecoder
+  pair E.idEncoder D.idB64
   pair E.identifyUserMessage (D.identifyUserMessage clock)
   pair E.kind D.kind
   pair E.level D.level
@@ -139,7 +140,31 @@ let tests =
         res.event
           |> Expect.equal "Has event" "Hello world 2"
 
-      testCase "decode Logary JS message" <| fun () ->
+      testCase "decode Logary JS traceId" <| fun () ->
+        let res =
+          Json.parse "\"0a96d6647c56adc2f4b655ecf3fc0fb3\""
+            |> JsonResult.bind D.traceId
+            |> JsonResult.getOrThrow
+
+        res
+          |> Expect.equal "Can decode trace id" (TraceId.ofString "0a96d6647c56adc2f4b655ecf3fc0fb3")
+
+      testCase "decode Logary JS spanContext" <| fun () ->
+        let res =
+          Json.parse """{ "traceId": "0a96d6647c56adc2f4b655ecf3fc0fb3", "spanId": "5107a84585f23e64", "traceFlags": 1 }"""
+            |> JsonResult.bind D.spanContext
+            |> JsonResult.getOrThrow
+
+        res.traceId
+          |> Expect.equal "Has trace id" (TraceId.ofString "0a96d6647c56adc2f4b655ecf3fc0fb3")
+
+        res.spanId
+          |> Expect.equal "Has span id" (SpanId.ofString "5107a84585f23e64")
+
+        res.flags
+          |> Expect.equal "Has trace flags" SpanFlags.Sampled
+
+      testCase "decode Logary JS event message" <| fun () ->
         let res =
           Json.parse """[{"event":"Foobar purchased","monetaryValue":{"amount":20,"currency":"EUR"},"error":null,"level":3,"timestamp":"1598451184415000000","fields":{},"context":{},"name":["with-nextjs","IndexPage"],"type":"event","templated":{"message":"Foobar purchased","consumed":[],"remaining":[]},"id":"cvTF3jralDI9861r1uR7Slr98AacANHynnxY2s/7VAA="},{"event":"User clicked \"{cssSelector}\"","monetaryValue":null,"error":null,"level":3,"timestamp":"1598451184417000000","fields":{"cssSelector":"html body div#__next div#layout button#purchase.primary"},"context":{},"name":["with-nextjs","plugins","browser","onClick"],"type":"event","templated":{"message":"User clicked \"html body div#__next div#layout button#purchase.primary\"","consumed":[{"key":"cssSelector","value":"html body div#__next div#layout button#purchase.primary"}],"remaining":[]},"id":"MtUGNmFDBdcCu60taBlfj9WeI2BH19RxvRcHKuxMMPI="}]"""
             |> JsonResult.bind D.messageBatch
@@ -148,6 +173,46 @@ let tests =
 
         res.event
           |> Expect.equal "Should be 'Foobar purchased'" "Foobar purchased"
+
+        res.monetaryValue.Value
+          |> Expect.equal "Is worth 20 EUR" (money Currency.EUR 20.)
+
+        res.name
+          |> Expect.equal "Has valid name" (PointName [| "with-nextjs"; "IndexPage" |])
+
+        res.level
+          |> Expect.equal "Has Info level" Info
+
+      testCase "decode Logary JS span message" <| fun () ->
+        let res =
+          Json.parse """[ { "spanContext": { "traceId": "0a96d6647c56adc2f4b655ecf3fc0fb3", "spanId": "5107a84585f23e64", "traceFlags": 1 }, "label": "documentFetch", "level": 3, "kind": 0, "status": { "code": 0 }, "events": [ { "event": "fetchStart", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027284000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "fetchStart", "consumed": [], "remaining": [] }, "id": "WX795nsFboyuuBwy/SrAZlwGZXGZPyv4h7Mz7YGunHI=" }, { "event": "domainLookupStart", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027332000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "domainLookupStart", "consumed": [], "remaining": [] }, "id": "hEIyblvEdELjx+sBzQmicjy9xCEXqWxnfAaz7qe1yoc=" }, { "event": "domainLookupEnd", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027332000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "domainLookupEnd", "consumed": [], "remaining": [] }, "id": "OEKC769Sfj4cq4HsscxXRhrUnHJm4Pz9rd23Ao+spFw=" }, { "event": "connectStart", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027333000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "connectStart", "consumed": [], "remaining": [] }, "id": "qB0JaDY60UqiOH4mV2aBiM24ubUF8iY/qLQlcEDwKng=" }, { "event": "connectEnd", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027333000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "connectEnd", "consumed": [], "remaining": [] }, "id": "hdtcESX9gv24M6TFwwhH0rhXrQ5XijQS2tvSbTlTts0=" }, { "event": "requestStart", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027333000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "requestStart", "consumed": [], "remaining": [] }, "id": "PVv279UOcArQzNuH7vfXqdTMcrvTOcNOxqrli2opgbY=" }, { "event": "responseStart", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027688000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "responseStart", "consumed": [], "remaining": [] }, "id": "C57vOW9Lq7t+0BSKvwsMpRijqe6gAWWnJZvzXhDzfhU=" }, { "event": "responseEnd", "monetaryValue": null, "error": null, "level": 3, "timestamp": "1598479027688000000", "fields": {}, "context": {}, "name": [], "type": "event", "templated": { "message": "responseEnd", "consumed": [], "remaining": [] }, "id": "dfAiDOOYR3PmZcGbLtkI7m7LdyGVN58sTv50FxoQCAw=" } ], "attrs": { "component": "document-load" }, "context": {}, "started": "1598479027284000000", "type": "span", "finished": "1598479027688000000", "id": "NTotpIH/6u52OyOGCbp4saYQhkSc+jNdAWqEjlSrHp4=" } ]"""
+            |> JsonResult.bind D.messageBatch
+            |> JsonResult.map (fun m -> m |> Array.map (fun mm -> mm.getAsOrThrow<SpanMessage>()) |> Array.head)
+            |> JsonResult.getOrThrow
+
+        res.context.traceId
+          |> Expect.equal "Has right trace id" (TraceId.ofString "0a96d6647c56adc2f4b655ecf3fc0fb3")
+
+        res.context.spanId
+          |> Expect.equal "Has right span id" (SpanId.ofString "5107a84585f23e64")
+
+        res.context.flags
+          |> Expect.equal "Has the sampled flag" SpanFlags.Sampled
+
+        res.label
+          |> Expect.equal "Has a 'documentFetch' label" "documentFetch"
+
+        res.level.asInt
+          |> Expect.equal "Logged with level 3 (info)" 3
+
+        res.kind
+          |> Expect.equal "Internal SpanKind" SpanKind.Internal
+
+        res.status
+          |> Expect.equal "OK status" (SpanCanonicalCode.OK, None)
+
+        res.events.Count
+          |> Expect.equal "Has nine events" 9
     ]
 
     testList "offset date time" [

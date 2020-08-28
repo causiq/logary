@@ -3,6 +3,7 @@ namespace Logary
 open System
 open System.Buffers
 
+/// 128 bit Id
 [<Struct>]
 type Id =
   { high: int64
@@ -25,14 +26,18 @@ type Id =
     let bs = x.toByteArray()
     Convert.ToBase64String(bs)
 
-  static member ofBase64String (s: string) =
+  static member tryOfBase64String (s: string) =
     use bs = MemoryPool.Shared.Rent(8)
     let mutable written = 0
     if Convert.TryFromBase64String(s, bs.Memory.Span, &written) && written = 16 then
       { high = BitConverter.ToInt64(Span<_>.op_Implicit (bs.Memory.Span.Slice(0, 8)))
         low = BitConverter.ToInt64(Span<_>.op_Implicit (bs.Memory.Span.Slice(8, 8))) }
+      |> Some
     else
-      Id.Zero
+      None
+
+  static member ofBase64String (s: string) =
+    Id.tryOfBase64String s |> Option.defaultValue Id.Zero
 
   member x.to32HexString() =
     String.Format("{0:x16}{1:x16}", x.high, x.low)
