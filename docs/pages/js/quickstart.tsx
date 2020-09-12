@@ -11,7 +11,11 @@ export default function JSQuickstart() {
           The first step is to install the <code>Logary</code> package from npm.
         </p>
         <p>
-          <code>npm install --save logary</code>
+          <code>yarn add logary @logary/plugin-browser @logary/plugin-nextjs @logary/plugin-node @logary/plugin-react</code> or with npm:
+          <code>npm add logary @logary/plugin-browser @logary/plugin-nextjs @logary/plugin-node @logary/plugin-react</code>.
+        </p>
+        <p>
+          Remove the ones that are irrelevant for you.
         </p>
       </DocSection>
 

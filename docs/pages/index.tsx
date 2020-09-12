@@ -36,7 +36,7 @@ export default function Index() {
 
           <div className="cta-container">
             <a className="btn btn-primary btn-cta"
-              href="https://www.nuget.org/packages/Logary/5.0.0-rc.10"
+              href="https://www.nuget.org/packages/Logary"
               target="_blank">
               <FontAwesomeIcon icon={faChevronDoubleDown} />
               .Net package
