@@ -19,6 +19,7 @@ let kind: JsonEncoder<MessageKind> =
   | MessageKind.Histogram -> E.string "histogram"
   | MessageKind.IdentifyUser -> E.string "identifyUser"
   | MessageKind.SetUserProperty -> E.string "setUserProperty"
+  | MessageKind.ForgetUser -> E.string "forgetUser"
 
 let resource: JsonEncoder<Model.Resource> =
   fun r ->
@@ -338,13 +339,23 @@ let setUserPropertyMessage: JsonEncoder<SetUserPropertyMessage> =
   E.jsonObjectWith setUserPropertyMessageBuilder
 
 
+let forgetUserMessageBuilder: ObjectBuilder<ForgetUserMessage> =
+  fun supm ->
+    E.requiredMixin logaryMessage supm
+    >> E.required E.string "userId" supm.userId
+
+let forgetUserMessage: JsonEncoder<ForgetUserMessage> =
+  E.jsonObjectWith forgetUserMessageBuilder
+
+
 let logaryMessageBase: JsonEncoder<LogaryMessage> =
   fun (m: LogaryMessage) ->
     match m.kind with
-    | MessageKind.Control         -> E.propertyList ["type", Json.String "control"]
+    | MessageKind.Control         -> E.propertyList ["type", String "control"]
     | MessageKind.Event           -> m.getAsOrThrow<EventMessage>() |> eventMessage
     | MessageKind.Span            -> m.getAsOrThrow<SpanMessage>() |> spanMessage
     | MessageKind.Gauge           -> m.getAsOrThrow<GaugeMessage>() |> gaugeMessage
     | MessageKind.Histogram       -> m.getAsOrThrow<HistogramMessage>() |> histogramMessage
     | MessageKind.IdentifyUser    -> m.getAsOrThrow<IdentifyUserMessage>() |> identifyUserMessage
     | MessageKind.SetUserProperty -> m.getAsOrThrow<SetUserPropertyMessage>() |> setUserPropertyMessage
+    | MessageKind.ForgetUser      -> m.getAsOrThrow<ForgetUserMessage>() |> forgetUserMessage

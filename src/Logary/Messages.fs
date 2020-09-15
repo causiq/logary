@@ -1,5 +1,6 @@
 namespace Logary
 
+open Logary
 open Logary.Trace
 open System.Collections.Generic
 
@@ -12,6 +13,7 @@ type MessageKind =
   | Histogram
   | IdentifyUser
   | SetUserProperty
+  | ForgetUser
 
   override x.ToString() =
     match x with
@@ -22,6 +24,7 @@ type MessageKind =
     | Histogram -> "histogram"
     | IdentifyUser -> "identifyUser"
     | SetUserProperty -> "setUserProperty"
+    | ForgetUser -> "forgetUser"
 
 type LogaryMessage =
   abstract kind: MessageKind
@@ -116,3 +119,7 @@ type SetUserPropertyMessage =
   abstract userId: string
   abstract key: string
   abstract value: Value
+
+type ForgetUserMessage =
+  inherit LogaryMessage
+  abstract userId: string

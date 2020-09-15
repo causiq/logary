@@ -584,6 +584,14 @@ let setUserPropertyMessage clock: JsonDecoder<Model.SetUserPropertyMessage> =
   D.jsonObjectWith (setUserPropertyMessageReader clock)
 
 
+let forgetUserMessageReader clock: ObjectReader<Model.ForgetUserMessage> =
+  let ctorDecoder = D.required D.string "userId"
+  logaryMessageWith clock ctorDecoder (fun u -> Model.ForgetUserMessage(u))
+
+let forgetUserMessage clock: JsonDecoder<Model.ForgetUserMessage> =
+  D.jsonObjectWith (forgetUserMessageReader clock)
+
+
 // At this level we use the Global IClock (Global.clockD); otherwise just use the JsonDecoders above
 
 let internal toBase decoder = decoder |> Decoder.map (fun (m: 'input) -> m :> Model.LogaryMessageBase)
@@ -598,6 +606,7 @@ let logaryMessageReader: ObjectReader<Model.LogaryMessageBase> =
       | MessageKind.Span            -> spanMessageReader >> toBase
       | MessageKind.IdentifyUser    -> identifyUserMessageReader >> toBase
       | MessageKind.SetUserProperty -> setUserPropertyMessageReader >> toBase
+      | MessageKind.ForgetUser      -> forgetUserMessageReader >> toBase
       | MessageKind.Control         ->
         fun _ _ -> JsonResult.messageTypeUnknown "ControlMessage are not accepted for deserialisation"
 

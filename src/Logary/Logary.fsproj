@@ -87,6 +87,7 @@
     <Compile Include="Model\IdentifyUserMessage.fs" />
     <Compile Include="Model\SetUserPropertyMessage.fs" />
     <Compile Include="Model\ModelEx.fs" />
+    <Compile Include="Model\ForgetUserMessage.fs" />
     <Compile Include="LoggerWrapper.fs" />
     <Compile Include="Log.fs" />
     <Compile Include="LogResult.fs" />

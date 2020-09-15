@@ -107,6 +107,7 @@ let tests =
   pair E.pointName D.pointName
   pair E.resource D.resource
   pair E.setUserPropertyMessage (D.setUserPropertyMessage clock)
+  pair E.forgetUserMessage (D.forgetUserMessage clock)
   pair E.spanContext D.spanContext
   pair E.spanKind D.spanKind
   pair E.spanLink D.spanLink
