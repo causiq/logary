@@ -1,4 +1,4 @@
-Copyright 2018 Henrik Feldt, Jun and contributors.
+Copyright 2020 Henrik Feldt, Jun and contributors.
 
 Logary is the collective name for:
 
@@ -82,9 +82,7 @@ The *Library Façade* is distinct from the *Façade Adapter*, since the Façade 
 
 ## `logary` JavaScript library
 
-**MIT-licensed**, see [logary/logary-js/LICENSE](https://github.com/logary/logary-js/blob/master/LICENSE).
-
-This NPM package is published at [npmjs.com/package/logary](https://www.npmjs.com/package/logary).
+See [logary/logary-js/LICENSE](https://github.com/logary/logary-js/blob/master/LICENSE.md).
 
 ---
 
