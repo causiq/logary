@@ -53,7 +53,7 @@ export default function Tutorials() {
       </DocSection>
 
       <DocSection title='Starting Hopac Jobs' id='hopac-jobs'>
-        <p>A module function like <span className="_code"> MyModule.create: Conf -> Job[T] </span> should not start the server loop. Instead, just return a cold job (that can be started multiple time) and let the composition "root", such as the <span className="_code"> Registry </span>, perform the composition and lifetime handling.</p>
+        <p>A module function like <span className="_code"> MyModule.create: Conf -&gt; Job[T] </span> should not start the server loop. Instead, just return a cold job (that can be started multiple time) and let the composition "root", such as the <span className="_code"> Registry </span>, perform the composition and lifetime handling.</p>
       </DocSection>
 
       <DocSection title='Writing a new target' id='new-target'>

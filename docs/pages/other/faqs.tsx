@@ -111,15 +111,15 @@ export default function FAQs() {
         <p>Another sample metric could be represented by the name <span className="_code"> [| "MyApp"; "API" "requests" |] </span> and <span className="_code"> PointValue </span> of <span className="_code"> Derived (Float 144.2, Div (Scalar, Seconds)) </span>, if the API is experiencing a request rate of 144.2 requests per second.</p>
         <p>Armed with this knowledge, we can now do a mapping between Codahale's metrics and those of Logary:</p>
         <ul>
-          <li><span className="_code"> Gauges </span> (measuring instantaneous values) -> <span className="_code"> PointValue.Gauge(.., ..) </span>.</li>
+          <li><span className="_code"> Gauges </span> (measuring instantaneous values) -&gt; <span className="_code"> PointValue.Gauge(.., ..) </span>.</li>
           <br></br>
-          <li><span className="_code"> Timers </span> (measuring durations) -> <span className="_code"> PointValue.Gauge(.., Scaled(Seconds, 10e9) </span> (in nanoseconds)</li>
+          <li><span className="_code"> Timers </span> (measuring durations) -&gt; <span className="_code"> PointValue.Gauge(.., Scaled(Seconds, 10e9) </span> (in nanoseconds)</li>
           <br></br>
-          <li><span className="_code"> Meter </span> (measuring rates) -> <span className="_code"> PointValue.Derived(.., Div(Scalar, Seconds)) </span> or <span className="_code"> PointValue.Derived(.., Div(Other "requests", Seconds))</span> </li>
+          <li><span className="_code"> Meter </span> (measuring rates) -&gt; <span className="_code"> PointValue.Derived(.., Div(Scalar, Seconds)) </span> or <span className="_code"> PointValue.Derived(.., Div(Other "requests", Seconds))</span> </li>
           <br></br>
-          <li><span className="_code"> Counters </span> (counting events) -> <span className="_code"> PointValue.Event("User logged in")</span></li>
+          <li><span className="_code"> Counters </span> (counting events) -&gt; <span className="_code"> PointValue.Event("User logged in")</span></li>
           <br></br>
-          <li><span className="_code"> Histograms </span> (tracking value distributions) -> <span className="_code"> PointValue.Derived </span> (with suffixes) and <span className="_code"> Reservoirs. </span></li>
+          <li><span className="_code"> Histograms </span> (tracking value distributions) -&gt; <span className="_code"> PointValue.Derived </span> (with suffixes) and <span className="_code"> Reservoirs. </span></li>
           <br></br>
         </ul>
         <p>Metrics like the above are taken from different sources:</p>

@@ -73,10 +73,10 @@ namespace: logary`} />
         <p>This service can run in three modes; Shipper, Router and Proxy. Servers can be implemented using Hopac's lightweight servers. Communication is implemented using ZMQ and a binary serialisation format.</p>
         <p>Bindings look may look like this:</p>
         <ul>
-          <li><span className="_code">Shipper -> Router</span></li>
-          <li><span className="_code">Shipper -> Proxy</span></li>
-          <li><span className="_code">Proxy -> Proxy</span></li>
-          <li><span className="_code">Proxy -> Router</span></li>
+          <li><span className="_code">Shipper -&gt; Router</span></li>
+          <li><span className="_code">Shipper -&gt; Proxy</span></li>
+          <li><span className="_code">Proxy -&gt; Proxy</span></li>
+          <li><span className="_code">Proxy -&gt; Router</span></li>
         </ul>
         <p></p>
         <p> <a href="http://api.zeromq.org/3-2:zmq-socket">ZMQ socket reference</a></p>

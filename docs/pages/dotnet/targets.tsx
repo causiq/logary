@@ -140,7 +140,7 @@ export default function TargetsPage() {
           <code>
             I 2016-11-08T11:04:00.6125063+00:00: Event 1 [Logary.Samples.main]
               <br></br>
-                number => 1
+                number =&gt; 1
                 <br></br>
               ...
               <br></br>
@@ -150,23 +150,23 @@ export default function TargetsPage() {
               <br></br>
               I 2016-11-08T11:04:02.0201345+00:00: Event 9402 [Logary.Samples.main]
               <br></br>
-                number => 9402
+                number =&gt; 9402
                 <br></br>
               [12:04:02 DBG] Flushing to disk.
               <br></br>
               I 2016-11-08T11:04:02.0201345+00:00: Event 9403 [Logary.Samples.main]
               <br></br>
-                number => 9403
+                number =&gt; 9403
                 <br></br>
               I 2016-11-08T11:04:02.0201345+00:00: Event 9404 [Logary.Samples.main]
               <br></br>
-                number => 9404
+                number =&gt; 9404
                 <br></br>
               ...
               <br></br>
               I 2016-11-08T11:04:02.0891350+00:00: Event 10000 [Logary.Samples.main]
               <br></br>
-                number => 10000
+                number =&gt; 10000
                 <br></br>
               [12:04:02 DBG] Flushing to disk.
               <br></br>
@@ -181,26 +181,26 @@ export default function TargetsPage() {
           <code>
             I 2016-11-08T11:14:42.9071732+00:00: Event 1 [Logary.Samples.main]
               <br></br>
-                number => 1
+                number =&gt; 1
                 <br></br>
             <br></br>
               [12:14:42 DBG] Flushing to disk.
               <br></br>
               I 2016-11-08T11:14:42.9711735+00:00: Event 2 [Logary.Samples.main]
               <br></br>
-                number => 2
+                number =&gt; 2
                 <br></br>
                 [12:14:42 DBG] Flushing to disk.
               <br></br>
               I 2016-11-08T11:04:02.0201345+00:00: Event 9403 [Logary.Samples.main]
               <br></br>
-                number => 3
+                number =&gt; 3
                 <br></br>
                 [12:14:42 DBG] Flushing to disk.
                 <br></br>
               I 2016-11-08T11:04:02.0201345+00:00: Event 9404 [Logary.Samples.main]
               <br></br>
-                number => 4
+                number =&gt; 4
                 <br></br>
                 [12:14:42 DBG] Flushing to disk.
                 <br></br>
@@ -208,7 +208,7 @@ export default function TargetsPage() {
               <br></br>
               I 2016-11-08T11:15:04.7635448+00:00: Event 10000 [Logary.Samples.main]
                 <br></br>
-                number => 10000
+                number =&gt; 10000
                 <br></br>
                 [12:15:04 DBG] Flushing to disk.
               <br></br>
@@ -281,7 +281,7 @@ export default function TargetsPage() {
         </ul>
         <h3>Usage</h3>
         <p>add ambientSpanId middleware to the target, if you want to use ambient span</p>
-        <pre>jaegerTargetConf |> TargetConf.middleware Middleware.ambientSpanId</pre>
+        <pre>jaegerTargetConf |&gt; TargetConf.middleware Middleware.ambientSpanId</pre>
         <p>then create span for some tracing, log message as usual:</p>
         <Code language="fsharp" value={Targets['Doc4.fs']} />
 
@@ -305,7 +305,7 @@ export default function TargetsPage() {
         <p>
           Target for <a href="https://docs.microsoft.com/en-us/azure/azure-monitor/overview"> Microsoft Azure AppInsights </a> logs the events as TRACE-messages (or Events/Metrics with a different
            MappingConfiguration). You need to set the API-key first. Then when you go to Azure Portal Application Insights and
-           <span className="_code"> Overview -> Search </span> you should be able to find the targets from there. Metrics goes to <span className="_code"> Metrics Explorer -> Add Chart ->
+           <span className="_code"> Overview -&gt; Search </span> you should be able to find the targets from there. Metrics goes to <span className="_code"> Metrics Explorer -&gt; Add Chart -&gt;
            Custom. </span> <a href="https://docs.microsoft.com/en-us/azure/azure-monitor/app/create-new-resource">More info...</a>
         </p>
       </DocSection>
