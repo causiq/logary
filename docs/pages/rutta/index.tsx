@@ -1,7 +1,6 @@
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import rutta from '../../public/images/logary-rutta-router.svg'
-import { faSatelliteDish } from '@fortawesome/fontawesome-free'
 import use1 from '../../public/images/usage1.png'
 import use2 from '../../public/images/usage2.jpg'
 import Code from '../../components/Code'
@@ -11,7 +10,6 @@ export default function Rutta() {
     <DocPage
       name="rutta"
       title="Rutta ᜑ high performance log router 🦋"
-      faIcon={faSatelliteDish}
       colour="blue">
 
       <DocSection title='Usage' id='usage'>

@@ -8,14 +8,11 @@ const instance = getLogary({
   serviceName: 'logary-docs',
   targets: [
     new ConsoleTarget(),
-    new RuttaTarget({
-      endpoint: 'https://i.logary.tech',
-      disabled: typeof window === 'undefined'
-    })
+    new RuttaTarget({ endpoint: 'https://i.logary.tech', })
   ]
 })
 
-browser(instance, { debugHandler: false })
+browser(instance)
 nextjs(instance)
 react(instance)
 

@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo, ReactElement, FormEvent } from '
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import { Input, Button } from 'reactstrap'
-import { faCoins } from '@fortawesome/fontawesome-free'
 import InputRange from 'react-input-range'
 import fetch from 'cross-fetch'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -254,7 +253,7 @@ export default function Pricing() {
 
   return (
     <Elements stripe={stripeP}>
-      <DocPage name="pricing" title="Pricing" faIcon={faCoins} colour="primary">
+      <DocPage name="pricing" title="Pricing" colour="primary">
         <DocSection title='Calculator' id='calculator'>
           <p>
             Logary's pricing is transparent. You don't have to sign up to a newsletter to know what it

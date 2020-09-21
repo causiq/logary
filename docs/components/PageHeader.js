@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button } from 'reactstrap'
 import { useState } from 'react'
 import LogaryLogo from './LogaryLogo';
@@ -46,8 +45,8 @@ const PageHeader = ({ title, query, setQuery }) => {
             value={tempQuery}
             autoFocus
             />
-          <Button type="submit" className="btn search-btn" value="Search">
-            {/* <FontAwesomeIcon icon="search" /> */}
+          <Button type="submit" className="btn search-btn">
+            Search
           </Button>
         </form>
       </div>

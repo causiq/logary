@@ -1,5 +1,4 @@
 
-import { faPuzzlePiece } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
@@ -15,7 +14,7 @@ import { Targets } from '../../components/samples'
 
 export default function TargetsPage() {
   return (
-    <DocPage name="all-target" title="Targets / Sinks" faIcon={faPuzzlePiece} colour="pink">
+    <DocPage name="all-target" title="Targets / Sinks" colour="pink">
       <DocSection title='InfluxDB' id='influxdb'>
         <p>Suppose you're measuring values coming from a car. This is what that could look like:</p>
         <ul>

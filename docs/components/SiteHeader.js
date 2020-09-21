@@ -1,9 +1,6 @@
 import Link from 'next/link'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import TweetShare from './TweetShare'
 import { Button } from 'reactstrap'
-import { faHeart } from '@fortawesome/fontawesome-free';
-import { faGithub } from "@fortawesome/free-brands-svg-icons"
 import { useState } from 'react'
 import Router from 'next/router'
 import LogaryLogo from './LogaryLogo';
@@ -13,10 +10,10 @@ const Social = () =>
     <div className="social-container">
       <div className="github-btn mb-2">
         <Button onClick={() => Router.push("https://github.com/logary/logary")}>
-          <FontAwesomeIcon icon={faGithub} /> Star Logary
+          Star Logary
         </Button>{' '}
         <Button onClick={() => Router.push("https://github.com/logary")}>
-          <FontAwesomeIcon icon={faGithub} /> Follow @logary
+          Follow @logary
         </Button>
       </div>
       <div>
@@ -55,7 +52,7 @@ const SiteHeader = ({ query, setQuery }) => {
 
       <div className="tagline">
         <p>Logary is awesome for analytics and logging.</p>
-        <p>Built with <FontAwesomeIcon icon={faHeart} /> for developers and business analysts.</p>
+        <p>Built with ❤️ for developers and business analysts.</p>
       </div>
 
       <div className="main-search-box pt-3 pb-4 d-inline-block">
@@ -70,7 +67,7 @@ const SiteHeader = ({ query, setQuery }) => {
             value={tempQuery}
             />
           <Button type="submit" className="btn search-btn" value="Search">
-            <FontAwesomeIcon icon="search" />
+            Search
           </Button>
         </form>
       </div>

@@ -1,14 +1,8 @@
 import { useRef } from 'react'
 import Layout from '../components/Layout'
 import Link from 'next/link'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import DotnetIcon from '../components/DotnetIcon'
 import PrometheusIcon from '../components/PrometheusIcon'
-import {
-  faFileChartLine, faLifeRing, faChevronDoubleDown, faCoins,
-  faAtom, faBalanceScale, faBooks, faSatelliteDish, faBullseye
-} from '@fortawesome/fontawesome-free'
-import { faJs } from '@fortawesome/free-brands-svg-icons';
 import ScrollLink from '../components/ScrollLink'
 
 export default function Index() {
@@ -35,28 +29,26 @@ export default function Index() {
           <p><ScrollLink targetRef={howToRef}>How does it work?</ScrollLink></p>
 
           <div className="cta-container">
-            <a className="btn btn-primary btn-cta"
+            <a className="btn btn-primary btn-cta arrow-down-circle"
               href="https://www.nuget.org/packages/Logary"
-              target="_blank">
-              <FontAwesomeIcon icon={faChevronDoubleDown} />
+              target="_blank"
+              data-track='Click .NET package CTA'>
               .Net package
             </a>{' '}
+
             <a className="btn btn-primary btn-cta"
               href="https://www.npmjs.com/package/logary"
-              target="_blank">
-              <FontAwesomeIcon icon={faChevronDoubleDown} />
-              JS package
+              target="_blank"
+              data-track='Click JS/TS package CTA'>
+              JS/TS package
             </a>
           </div>
         </div>
 
         <div id="cards-wrapper" className="cards-wrapper row">
-
-          <div className="item item-yellow col-lg-4 col-6">
+          <div className="item item-yellow col-lg-4 col-6" data-track='Card: JS Quickstart'>
             <div className="item-inner">
-              <div className="icon-holder">
-                <FontAwesomeIcon icon={faJs} />
-              </div>
+              <div className="icon-holder directions" />
               <h3 className="title">JS Quickstart</h3>
               <p className="intro">Learn how to add analytics to your web/react-native apps.</p>
               <Link href="/js/quickstart">
@@ -65,7 +57,7 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-purple item-2 col-lg-4 col-6">
+          <div className="item item-purple item-2 col-lg-4 col-6" data-track='Card: .NET Quickstart'>
             <div className="item-inner">
               <div className="icon-holder">
                 <DotnetIcon width={58} />
@@ -76,12 +68,10 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-pink col-lg-4 col-6">
+          <div className="item item-pink col-lg-4 col-6" data-track='Card: Targets'>
             <div className="item-inner">
-              <div className="icon-holder">
-                <FontAwesomeIcon icon={faBullseye} />
-              </div>
-              <h3 className="title">Targets / Sinks</h3>
+              <div className="icon-holder paper-plane" />
+              <h3 className="title">Targets</h3>
               <p className="intro">
                 Logary can send logs, metrics and spans to a wide range of targets. Have a look here to see what's available!
               </p>
@@ -91,11 +81,9 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-blue col-lg-4 col-6" ref={howToRef}>
+          <div className="item item-blue col-lg-4 col-6" ref={howToRef} data-track='Card: How does it work'>
             <div className="item-inner">
-              <div className="icon-holder">
-                <FontAwesomeIcon icon={faAtom} />
-              </div>
+              <div className="icon-holder eyeglass" />
               <h3 id="how-does-it-work" className="title">How does it work?</h3>
               <p className="intro">Let's have a look at this site and how we do analytics here...</p>
               <Link href="/other/tutorial/how?">
@@ -104,12 +92,10 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-yellow item-2 col-lg-4 col-6">
+          <div className="item item-yellow item-2 col-lg-4 col-6" data-track='Card: JS/TS documentation'>
             <div className="item-inner">
-              <div className="icon-holder">
-                <FontAwesomeIcon icon={faBooks} />
-              </div>
-              <h3 className="title">JS Documentation</h3>
+              <div className="icon-holder diamond" />
+              <h3 className="title">JS/TS Documentation</h3>
               <p className="intro">Read up on how to use the JavaScript library</p>
               <Link href="/js/docs">
                 <a className="link"><span></span></a>
@@ -117,11 +103,9 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-purple item-2 col-lg-4 col-6">
+          <div className="item item-purple item-2 col-lg-4 col-6" data-track='Card: .NET documentation'>
             <div className="item-inner">
-              <div className="icon-holder">
-                <FontAwesomeIcon icon={faBooks} />
-              </div>
+              <div className="icon-holder badge" />
               <h3 className="title">.Net Core Documentation</h3>
               <p className="intro">Read up on how to use the library</p>
               <Link href="/dotnet/docs">
@@ -130,10 +114,9 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-green col-lg-4 col-6">
+          <div className="item item-green col-lg-4 col-6" data-track='Card: FAQs'>
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faLifeRing} />
               </div>
               <h3 className="title">FAQs</h3>
               <p className="intro">Layout for FAQ page. Lorem ipsum dolor sit amet, consectetuer adipiscing elit</p>
@@ -144,10 +127,9 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-primary col-lg-4 col-6">
+          <div className="item item-primary col-lg-4 col-6" data-track='Card: Tutorials'>
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faFileChartLine} />
               </div>
               <h3 className="title">Tutorials</h3>
               <p className="intro">Learn how to use Logary to visualise the state and interactions with your apps.</p>
@@ -157,10 +139,9 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-orange col-lg-4 col-6">
+          <div className="item item-orange col-lg-4 col-6" data-track='Card: License'>
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faBalanceScale} />
               </div>
               <h3 className="title">License &amp; Credits</h3>
               <p className="intro">Layout for license &amp; credits page. Consectetuer adipiscing elit.</p>
@@ -170,12 +151,12 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-orange col-lg-4 col-6">
+          <div className="item item-orange col-lg-4 col-6" data-track='Card: Prometheus for .NET'>
             <div className="item-inner">
               <div className="icon-holder">
                 <PrometheusIcon />
               </div>
-              <h3 className="title">Logary Prometheus for .Net Core</h3>
+              <h3 className="title">Logary Prometheus for .NET</h3>
               <p className="intro">With <code>Logary.Prometheus</code> you can expose you app metrics for Prometheus and Grafana.</p>
               <Link href="/dotnet/prometheus">
                 <a className="link"><span></span></a>
@@ -183,10 +164,9 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-blue col-lg-4 col-6">
+          <div className="item item-blue col-lg-4 col-6" data-track='Card: Rutta'>
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faSatelliteDish} />
               </div>
               <h3 className="title">Logary Rutta</h3>
               <p className="intro">
@@ -198,10 +178,9 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="item item-yellow col-lg-4 col-6">
+          <div className="item item-yellow col-lg-4 col-6" data-track='Card: Pricing'>
             <div className="item-inner">
               <div className="icon-holder">
-                <FontAwesomeIcon icon={faCoins} />
               </div>
               <h3 className="title">Pricing</h3>
               <p className="intro">

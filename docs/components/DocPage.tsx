@@ -1,5 +1,3 @@
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { IconProp } from '@fortawesome/fontawesome-svg-core'
 import Layout from './Layout'
 import DocMenu from './DocMenu'
 import { ReactNode, Children, isValidElement, cloneElement, useMemo, createRef, RefObject } from 'react'
@@ -18,7 +16,6 @@ type Props = Readonly<{
   colour: string;
   title: string;
   icon?: ReactNode;
-  faIcon?: IconProp;
   children: ReactNode;
   estimationMinutes?: number;
   noEstimation?: boolean;
@@ -90,7 +87,6 @@ export default function DocPage({
   colour,
   title,
   icon,
-  faIcon,
   estimationMinutes,
   noEstimation,
   children: cs,
@@ -130,13 +126,9 @@ export default function DocPage({
       <div className="container">
         <div id="doc-header" className="doc-header text-center">
           <h1 className="doc-title">
-            {faIcon != null
-              ? <FontAwesomeIcon icon={faIcon} />
-              : icon} {title}
+            {title}
           </h1>
           {!noEstimation && <div className="meta">
-            {/* <FontAwesomeIcon icon={faClock} size="1x" /> */}
-            {' '}
             Reading time: {String(estimationMinutes || Math.round(toc.length * 1.5))} minutes
           </div>}
         </div>

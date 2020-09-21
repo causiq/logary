@@ -1,4 +1,3 @@
-import { faLifeRing } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
@@ -6,7 +5,7 @@ import preval from 'babel-plugin-preval/macro'
 
 export default function FAQs() {
   return (
-    <DocPage name="all-target" title="FAQs" faIcon={faLifeRing} colour="green">
+    <DocPage name="all-target" title="FAQs" colour="green">
       <DocSection title='FAQ' id='faq'>
 
         <h3>How do I use Hopac from C#?</h3>

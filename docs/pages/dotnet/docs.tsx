@@ -1,4 +1,3 @@
-import { faBooks } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
@@ -13,7 +12,6 @@ export default function DotnetDocs() {
     <DocPage
       name=".net-documentation"
       title=".Net Core Documentation"
-      faIcon={faBooks}
       colour="purple">
 
       <DocSection title='An example' id='an-example'>

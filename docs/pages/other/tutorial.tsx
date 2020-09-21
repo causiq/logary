@@ -1,11 +1,10 @@
-import { faFileChartLine } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
 
 export default function Tutorials() {
   return (
-    <DocPage name="js-quickstart" title="Tutorials" faIcon={faFileChartLine} colour="primary">
+    <DocPage name="js-quickstart" title="Tutorials" colour="primary">
 
       Clone it like above. Ensure you can build it. Open <span className="_code"> Logary.sln </span>. Make a change, send a PR towards master. To balance the app.config files, try <span className="_code"> mono tools/paket.exe install --redirects --clean-redirects --createnewbindingfiles</span>
 

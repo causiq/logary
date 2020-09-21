@@ -1,11 +1,10 @@
-import { faJs } from '@fortawesome/free-brands-svg-icons'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 import Code from '../../components/Code'
 
 export default function JSQuickstart() {
   return (
-    <DocPage name="js-quickstart" title="JavaScript Quickstart" faIcon={faJs} colour="yellow">
+    <DocPage name="js-quickstart" title="JavaScript Quickstart" colour="yellow">
       <DocSection title='Install the package' id='installation'>
         <p>
           The first step is to install the <code>Logary</code> package from npm.

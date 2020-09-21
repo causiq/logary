@@ -1,10 +1,9 @@
-import { faBalanceScale } from '@fortawesome/fontawesome-free'
 import DocPage from '../../components/DocPage'
 import DocSection from '../../components/DocSection'
 
 export default function License() {
   return (
-    <DocPage name="all-target" title="License" faIcon={faBalanceScale} colour="orange">
+    <DocPage name="all-target" title="License" colour="orange">
 
       <DocSection title='Logary licensing' id='logary-licensing'>
         <p></p>
