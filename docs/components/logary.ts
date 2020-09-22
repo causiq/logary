@@ -9,7 +9,8 @@ const instance = getLogary({
   targets: [
     new ConsoleTarget(),
     new RuttaTarget({ endpoint: 'https://i.logary.tech', })
-  ]
+  ],
+  appId: 'LA-14396174'
 })
 
 browser(instance)
