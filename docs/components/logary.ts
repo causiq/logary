@@ -8,7 +8,13 @@ const instance = getLogary({
   serviceName: 'logary-docs',
   targets: [
     new ConsoleTarget(),
-    new RuttaTarget({ endpoint: 'https://i.logary.tech', })
+    new RuttaTarget({
+      endpoint: typeof window !== 'undefined' && window.location.hostname === 'logary.test'
+        ? 'https://i.logary.test'
+        : process.env.LOGARY_ENV === 'test'
+          ? 'https://i.logary.test'
+          : 'https://i.logary.tech'
+    })
   ],
   appId: 'LA-14396174'
 })
