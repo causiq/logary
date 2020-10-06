@@ -69,8 +69,8 @@ let empty =
     prodConfFile = None
     prodConf = ProducerConfig(BootstrapServers="ingress-broker-kafka-bootstrap.kafka.svc:9092",
                               EnableIdempotence=Nullable<_> true,
-                              MessageSendMaxRetries=Nullable Int32.MaxValue
-                              )
+                              MessageSendMaxRetries=Nullable Int32.MaxValue,
+                              CompressionType=Nullable<_> CompressionType.Zstd)
   }
 
 type KafkaTargetExn(message, error: Error) =
