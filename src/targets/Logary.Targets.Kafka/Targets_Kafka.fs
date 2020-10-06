@@ -67,10 +67,14 @@ let empty =
     replicationFactor = 2us
     batchSize = 100us
     prodConfFile = None
-    prodConf = ProducerConfig(BootstrapServers="ingress-broker-kafka-bootstrap.kafka.svc:9092",
-                              EnableIdempotence=Nullable<_> true,
-                              MessageSendMaxRetries=Nullable Int32.MaxValue,
-                              CompressionType=Nullable<_> CompressionType.Zstd)
+    prodConf =
+      ProducerConfig(
+        BootstrapServers="ingress-broker-kafka-bootstrap.kafka.svc:9092",
+        EnableIdempotence=Nullable<_> true,
+        // https://github.com/tulios/kafkajs/issues/910
+        CompressionType=Nullable<_> CompressionType.Snappy,
+        ClientId="logary",
+        Acks = Nullable<_> Acks.All)
   }
 
 type KafkaTargetExn(message, error: Error) =
