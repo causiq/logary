@@ -62,6 +62,12 @@ type SpanId with
     { id = value |> Option.defaultWith Rnd.nextInt64NonZero }
   static member ofTraceId (tId: TraceId) =
     SpanId.create tId.low
+
+  static member tryOfString (s: string) =
+    match Int64.TryParse(s, NumberStyles.HexNumber, null) with
+    | false, _ -> None
+    | true, v -> Some (SpanId.create v)
+
   static member ofString (s: string) =
     match Int64.TryParse(s, NumberStyles.HexNumber, null) with
     | false, _ -> SpanId.Zero

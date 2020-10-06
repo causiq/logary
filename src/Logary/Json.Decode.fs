@@ -70,10 +70,12 @@ let traceId: JsonDecoder<TraceId> =
 
 
 let spanIdB64: JsonDecoder<SpanId> =
-  SpanId.ofBase64String <!> D.string
+  let inner = SpanId.tryOfBase64String >> JsonResult.ofOption (InvalidJson "SpanId: not Base64")
+  D.string >> JsonResult.bind inner
 
 let spanIdHex: JsonDecoder<SpanId> =
-  SpanId.ofString <!> D.string
+  let inner = SpanId.tryOfString >> JsonResult.ofOption (InvalidJson "SpanId: not hexadecimal number")
+  D.string >> JsonResult.bind inner
 
 let spanId: JsonDecoder<SpanId> =
   D.eitherNamed ("SpanId b64", spanIdB64)
@@ -335,10 +337,12 @@ let errorInfos = D.arrayWith errorInfo
 /// Decodes a timestamp from milliseconds, microseconds or nanoseconds.
 let numericTimestamp (minI, maxI): JsonDecoder<EpochNanoSeconds> =
   let rec interpret (prev: int64, n: int64) =
+    if n = 0L then 0L else
     let i = Instant.ofEpoch n
     if i > maxI || n < prev (* wrap-around case*) then prev // we've gone past max expected, settle for the prev (which might be the initial value!)
     elif i < minI then interpret (n, n * 1000L) // it's less than our minimum, bump it three magnitudes and try again
     else n // we're within out interval; we've found a realistic timestamp
+
   and loop initial =
     interpret (initial, initial)
 
@@ -388,6 +392,7 @@ let foldIntoBase (clock: IClock) (acc: #Model.LogaryMessageBase) (key: string, j
     level json
       |> JsonResult.map (fun level -> acc.level <- level; acc)
       |> JsonResult.tagOnFail (PropertyTag "level")
+
   | "timestamp" ->
     timestamp clock json
       |> JsonResult.map (fun ts -> acc.timestamp <- ts; acc)

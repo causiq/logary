@@ -136,6 +136,14 @@ type Arbs =
     }
     |> Arb.fromGen
 
+  static member ModelForgetUserMessage(): Arbitrary<Logary.Model.ForgetUserMessage> =
+    gen {
+      let uid = Arb.generate<Id>
+      let m = Model.ForgetUserMessage(uid.ToString())
+      return m
+    }
+    |> Arb.fromGen
+
   static member ModelHistogramMessage(): Arbitrary<Logary.Model.HistogramMessage> =
     gen {
       let registry = MetricRegistry()
@@ -208,31 +216,30 @@ type Arbs =
     Arbs.ModelEventMessage()
       |> Arb.convert (fun m -> m :> _) (fun m -> m :?> Model.Event)
 
-//  static member SpanMessage(): Arbitrary<Logary.SpanMessage> =
-//    let generator = gen {
-//      let! traceId = Arb.generate<TraceId>
-//      let! spanId = Arb.generate<SpanId>
-//      let! parent = Gen.oneof [ Gen.constant None; Arb.generate<SpanId> |> Gen.map Some ]
-//      let context = SpanContext(traceId, spanId, parent)
-//      let! (NonEmptyString label) = Arb.generate<NonEmptyString>
-//      let! started = Arb.generate<EpochNanoSeconds>
-//      let finished = started + 1_340_000_000L // 1.34s
-//      let! flags = Arb.generate<SpanFlags>
-//      let! attrs = Arb.generate<Dictionary<string, Value>>
-//      let! status = Arb.generate<SpanStatus>
-//      let dto = Model.SpanMessage(context)
-//      dto.label <- label
-//      dto.started <- started
-//      dto.finished <- Some finished
-//      dto.spanKind <- SpanKind.Internal
-//      dto.status <- status
-//      dto.setAttributes attrs
-//      dto.flags <- flags
-//      return dto :> Logary.SpanMessage
-//    }
-//    // TO CONSIDER: improve shrinker
-//    let shrinker (_: SpanMessage): SpanMessage seq = Seq.empty
-//    Arb.fromGenShrink (generator, shrinker)
+  static member ModelSpanMessage(): Arbitrary<Logary.Model.SpanMessage> =
+    let generator = gen {
+      let! traceId = Arb.generate<TraceId>
+      let! spanId = Arb.generate<SpanId>
+      let! parent = Gen.oneof [ Gen.constant None; Arb.generate<SpanId> |> Gen.map Some ]
+      let context = SpanContext(traceId, spanId, parent)
+      let! (NonEmptyString label) = Arb.generate<NonEmptyString>
+      let! started = Arb.generate<EpochNanoSeconds>
+      let finished = started + 1_340_000_000L // 1.34s
+      let! flags = Arb.generate<SpanFlags>
+      let! attrs = Arb.generate<Dictionary<string, Value>>
+      let! status = Arb.generate<SpanStatus>
+      let! kind = Arb.generate<SpanKind>
+      let dto = Model.SpanMessage(context)
+      dto.label <- label
+      dto.started <- started
+      dto.finished <- Some finished
+      dto.spanKind <- kind
+      dto.status <- status
+      dto.setAttributes attrs
+      dto.flags <- flags
+      return dto
+    }
+    Arb.fromGen generator
 
   static member Exception() =
     let failer message =

@@ -210,7 +210,7 @@ type SpanMessage(label: string,
     member __.label = _label
     member __.context = _context
     member __.kind = spanKind
-    member __.started = started
+    member __.started = base.timestamp
     member __.finished = _finished |> Option.defaultValue 0L
     member __.flags = _flags
     member __.links = links :> IReadOnlyList<_>

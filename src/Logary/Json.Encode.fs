@@ -291,7 +291,8 @@ let spanMessageBuilder: ObjectBuilder<SpanMessage> =
     >> E.required spanFlags "flags" s.flags
     >> E.required (E.arrayWith spanLink) "links" (Array.ofSeq s.links)
     >> E.required (E.arrayWith eventMessage) "events" (Array.ofSeq s.events)
-    >> E.required (E.readDictWith value) "attributes" s.attrs
+    // "attrs" -> "fields", so we don't serialise these
+    // >> E.required (E.readDictWith value) "attrs" s.attrs
     >> E.required spanStatus "status" s.status
 
 let spanMessage: JsonEncoder<SpanMessage> =

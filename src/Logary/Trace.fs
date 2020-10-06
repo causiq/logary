@@ -19,13 +19,20 @@ type SpanId =
 
   static member Zero = { id = 0L }
 
-  static member ofBase64String (s: string) =
+  static member tryOfBase64String (s: string) =
     use bs = MemoryPool.Shared.Rent(4)
     let mutable written = 0
     if Convert.TryFromBase64String(s, bs.Memory.Span, &written) && written = 8 then
-      { id = BitConverter.ToInt64(Span<_>.op_Implicit (bs.Memory.Span.Slice(0, 8))) }
+      Some { id = BitConverter.ToInt64(Span<_>.op_Implicit (bs.Memory.Span.Slice(0, 8))) }
     else
+      None
+
+  static member ofBase64String (s: string) =
+    match SpanId.tryOfBase64String s with
+    | None ->
       SpanId.Zero
+    | Some v ->
+      v
 
   override x.ToString() = String.Format("{0:x16}", x.id)
 
