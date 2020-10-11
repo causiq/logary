@@ -1,9 +1,10 @@
 using System.Runtime.InteropServices;
+using Logary.Ingestion.HTTP2;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Hosting;
 
-namespace Logary.Ingestion.HTTP2
+namespace Logary.Ingestion.gRPC
 {
     public class Program
     {

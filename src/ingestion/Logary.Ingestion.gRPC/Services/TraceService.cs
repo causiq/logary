@@ -3,7 +3,7 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Opentelemetry.Proto.Collector.Trace.V1;
 
-namespace Logary.Ingestion.HTTP2.Services
+namespace Logary.Ingestion.gRPC.Services
 {
     public class TraceService : Opentelemetry.Proto.Collector.Trace.V1.TraceService.TraceServiceBase
     {

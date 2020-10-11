@@ -28,7 +28,12 @@ type KafkaConf =
 
   member x.asTopicSpec =
     let conf = Dictionary<string, string>(x.topicConf)
-    TopicSpecification(Name=x.topicName, NumPartitions=int x.partitions, ReplicationFactor=int16 x.replicationFactor, Configs=conf)
+    TopicSpecification(
+      Name=x.topicName,
+      NumPartitions=int x.partitions,
+      ReplicationFactor=int16 x.replicationFactor,
+      Configs=conf
+    )
 
   interface IValueFormattable with
     member x.toKeyValues baseKey =
@@ -122,13 +127,16 @@ type LazyDisposer<'a when 'a :> IDisposable>(dL: Lazy<'a>) =
 module internal Impl =
   open Logary.Internals.Chiron
 
-  type Producer = IProducer<Id, LogaryMessageBase>
+  type Producer = IProducer<string, LogaryMessageBase>
 
-  let idSerializer: ISerializer<Id> =
-    { new ISerializer<Id> with
-        member x.Serialize(data, context): byte[] = data.toByteArray()
+  let idSerializer: ISerializer<string> =
+    { new ISerializer<_> with
+        member x.Serialize(data, context): byte[] = Encoding.UTF8.GetBytes data
     }
 
+  // TODO: integrate with schema registry:
+  // https://github.com/confluentinc/confluent-kafka-dotnet/tree/master/examples/AvroBlogExamples
+  // see https://github.com/confluentinc/confluent-kafka-dotnet/blob/master/examples/JsonSerialization/Program.cs#L141
   let serialise message =
     Json.Encode.logaryMessageBase message
       |> Json.formatWith JsonFormattingOptions.Compact
@@ -148,7 +156,7 @@ module internal Impl =
             |> Task.FromResult
     }
 
-  type  SyslogLevel with
+  type SyslogLevel with
     member x.toLogary() =
       match x with
       | SyslogLevel.Emergency | SyslogLevel.Alert | SyslogLevel.Critical -> Fatal
@@ -234,7 +242,7 @@ module internal Impl =
 
     /// Also ACKs.
     let handleReport (ack: IVar<unit>) =
-      fun (report: DeliveryReport<Id, LogaryMessageBase>) ->
+      fun (report: DeliveryReport<string, LogaryMessageBase>) ->
         let fillJ =
           if report.Error.IsFatal then
             // TO CONSIDER: can callers of logWithAck handle failing (with exception) ACKs, or should
@@ -253,7 +261,7 @@ module internal Impl =
       >>= startProducer
 
     and startProducer () =
-      let b = ProducerBuilder<Id, LogaryMessageBase>(conf.prodConf)
+      let b = ProducerBuilder<string, LogaryMessageBase>(conf.prodConf)
       let p =
         b.SetErrorHandler(Action<_,_> handleError)
           .SetKeySerializer(idSerializer)
@@ -290,7 +298,13 @@ module internal Impl =
             match tm with
             | Log (m, ack) ->
               // handleReport fills the ack IVar
-              state.producer.Produce(conf.topicName, Message<_, _>(Key=m.id,Value=m), handleReport ack)
+              let mDTO =
+                Message<_, _>(
+                  Key=m.id.toBase64String(),
+                  Value=m,
+                  Timestamp=Timestamp(m.timestamp / 1_000_000L, TimestampType.CreateTime)
+              )
+              state.producer.Produce(conf.topicName, mDTO, handleReport ack)
               acks.Add ack
 
             | Flush (ack, nack) ->
