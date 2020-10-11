@@ -262,7 +262,7 @@ module W3C =
     else spanCtx |> Option.map (fun ctx -> ctx.withContext traceContext)
 
   let inject (setter: Setter<'a>) (ctx: SpanContext) (target: 'a): 'a =
-    let value = sprintf "00-%s-%O-%02x" (ctx.traceId.to32HexString()) ctx.spanId (int ctx.flags)
+    let value = sprintf "00-%s-%s-%02x" (ctx.traceId.to32HexString()) (ctx.spanId.toHexString()) (int ctx.flags)
     setter (TraceParentHeader, value :: []) target
 
   let propagator =
@@ -366,8 +366,8 @@ module Jaeger =
     else context |> Option.map (fun ctx -> ctx.withContext traceContext)
 
   let inject (setter: Setter<'t>) (context: SpanContext) (target: 't): 't =
-    let psId = match context.parentSpanId with None -> "0" | Some psId -> psId.ToString()
-    let trace = sprintf "%O:%O:%O:%i" context.traceId context.spanId psId (byte context.flags)
+    let psId = match context.parentSpanId with None -> "0" | Some psId -> psId.toHexString()
+    let trace = sprintf "%s:%s:%s:%i" (context.traceId.toHexString()) (context.spanId.toHexString()) psId (byte context.flags)
     target
       |> setter (TraceHeader, trace :: [])
       |> JaegerBaggage.inject setter context
@@ -481,11 +481,11 @@ module B3 =
 
     target
       |> setter (flagsHeader, flagsValue :: [])
-      |> setter (TraceIdHeader, context.traceId.ToString() :: [])
-      |> setter (SpanIdHeader, context.spanId.ToString() :: [])
+      |> setter (TraceIdHeader, context.traceId.toHexString() :: [])
+      |> setter (SpanIdHeader, context.spanId.toHexString() :: [])
       |> match context.parentSpanId with
          | None -> id
-         | Some psId -> setter (ParentSpanIdHeader, psId.ToString() :: [])
+         | Some psId -> setter (ParentSpanIdHeader, psId.toHexString() :: [])
       |> JaegerBaggage.inject setter context
 
 
@@ -526,9 +526,9 @@ module B3 =
     let parentSpanId =
       match context.parentSpanId with
       | None -> ""
-      | Some psId -> sprintf "-%O" psId
+      | Some psId -> sprintf "-%s" (psId.toHexString())
 
-    let trace = sprintf "%O-%O-%s%s" context.traceId context.spanId flags parentSpanId
+    let trace = sprintf "%s-%s-%s%s" (context.traceId.toHexString()) (context.spanId.toHexString()) flags parentSpanId
 
     target
       |> setter (TraceHeader, trace :: [])

@@ -27,17 +27,26 @@ type Id =
     Convert.ToBase64String(bs)
 
   static member tryOfBase64String (s: string) =
-    use bs = MemoryPool.Shared.Rent(8)
+    use bs = MemoryPool.Shared.Rent(16)
     let mutable written = 0
     if Convert.TryFromBase64String(s, bs.Memory.Span, &written) && written = 16 then
-      { high = BitConverter.ToInt64(Span<_>.op_Implicit (bs.Memory.Span.Slice(0, 8)))
-        low = BitConverter.ToInt64(Span<_>.op_Implicit (bs.Memory.Span.Slice(8, 8))) }
+      let hS = bs.Memory.Span.Slice(0, 8)
+      let lS = bs.Memory.Span.Slice(8, 8)
+      if BitConverter.IsLittleEndian then
+        hS.Reverse()
+        lS.Reverse()
+      { high = BitConverter.ToInt64(Span<_>.op_Implicit(hS))
+        low = BitConverter.ToInt64(Span<_>.op_Implicit(lS)) }
       |> Some
     else
       None
 
   static member ofBase64String (s: string) =
     Id.tryOfBase64String s |> Option.defaultValue Id.Zero
+
+  member x.toHexString() =
+    if x.high = 0L then String.Format("{0:x16}", x.low)
+    else String.Format("{0:x16}{1:x16}", x.high, x.low)
 
   member x.to32HexString() =
     String.Format("{0:x16}{1:x16}", x.high, x.low)

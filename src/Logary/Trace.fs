@@ -17,13 +17,20 @@ type SpanId =
     if BitConverter.IsLittleEndian then Array.Reverse(bs) // macOS Catalina 64 is LE, convention: BE
     Convert.ToBase64String(bs)
 
+  member x.toHexString() =
+    String.Format("{0:x16}", x.id)
+
   static member Zero = { id = 0L }
 
   static member tryOfBase64String (s: string) =
-    use bs = MemoryPool.Shared.Rent(4)
+    use bs = MemoryPool.Shared.Rent(8)
     let mutable written = 0
     if Convert.TryFromBase64String(s, bs.Memory.Span, &written) && written = 8 then
-      Some { id = BitConverter.ToInt64(Span<_>.op_Implicit (bs.Memory.Span.Slice(0, 8))) }
+      let hS = bs.Memory.Span.Slice(0, 8)
+      if BitConverter.IsLittleEndian then
+        hS.Reverse()
+      { id = BitConverter.ToInt64(Span<_>.op_Implicit(hS)) }
+      |> Some
     else
       None
 

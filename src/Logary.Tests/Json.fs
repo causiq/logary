@@ -98,7 +98,7 @@ let tests =
   pair E.gauge D.gauge
   pair E.gaugeMessage (D.gaugeMessage MonotonicClock.getTimestamp)
   pair E.histogramMessage (D.histogramMessage MonotonicClock.getTimestamp)
-  pair E.idEncoder D.idB64
+  pair E.idB64 D.idB64
   pair E.identifyUserMessage (D.identifyUserMessage MonotonicClock.getTimestamp)
   pair E.kind D.kind
   pair E.level D.level
@@ -220,12 +220,29 @@ let tests =
         res.events.Count
           |> Expect.equal "Has eight events" 8
 
-      ftestCase "pretty print Logary JS span message" <| fun () ->
+      testPropertyWithConfig fsc "roundtrip SpanContext" <| fun (sc: SpanContext) ->
+        sc
+          |> E.spanContext
+          |> D.spanContext
+          |> JsonResult.getOrThrow
+          |> ignore
+
+      testCase "roundtrip Id to base64" <| fun () ->
+        let id = Id.create()
+        id.isZero |> Expect.isFalse "Non zero"
+        let id' = E.idB64 id |> D.idB64 |> JsonResult.getOrThrow
+        id |> Expect.equal "Matches id'" id'
+
+
+      testCase "pretty print Logary JS span message" <| fun () ->
         let mId = Id.ofBase64String "hUHk5sAImztkm18PlRNRrw=="
+        let traceId = TraceId.create()
+        let spanId = SpanId.create()
+        let parentSpanId = Some (SpanId.create())
         let span =
           SpanMessage(
             "GET /", id, 1234L,
-            SpanContext(TraceId.create(), SpanId.create(), Some (SpanId.create()), SpanFlags.Sampled),
+            SpanContext(traceId, spanId, parentSpanId, SpanFlags.Sampled),
             SpanKind.Server,
             ResizeArray<_>(),
             Map.empty,
@@ -239,6 +256,18 @@ let tests =
           )
 
         span.finished <- Some 4321L
+
+        span.context.traceId
+          |> Expect.equal "Has passed trace id" traceId
+
+        span.context.spanId
+          |> Expect.equal "Has passed span id" spanId
+
+        span.context.parentSpanId
+          |> Expect.equal "Has passed parent span id" parentSpanId
+
+        span.context.isSampled
+          |> Expect.isTrue "Is sampled"
 
         (span.elapsed, Duration.Zero)
           |> Expect.isGreaterThan "Zero"
@@ -307,16 +336,23 @@ let tests =
           |> Expect.equal "'flags' property is inside 'spanContext'" 1
 
         spanContext
-          |> expectStringProp "parentSpanId" (span.context.parentSpanId.Value.toBase64String())
-        spanContext
-          |> expectStringProp "spanId" (span.context.spanId.toBase64String())
-        spanContext
           |> expectStringProp "traceId" (span.context.traceId.toBase64String())
 
+        spanContext
+          |> expectStringProp "parentSpanId" (span.context.parentSpanId.Value.toBase64String())
+
+        spanContext
+          |> expectStringProp "spanId" (span.context.spanId.toBase64String())
+
+
+        // roundtrip
         let roundtripped =
           json
             |> D.spanMessage (fun () -> 1234L)
             |> JsonResult.getOrThrow
+
+        roundtripped
+          |> Expect.equal "Eq the span as it were before serialising" span
 
         let roundtrippedJSON =
           roundtripped
@@ -423,7 +459,7 @@ let tests =
 
       let testInstant (i, e: Instant) =
         testCase (sprintf "instant %s parses correctly" i) <| fun () ->
-          Json.String i
+          String i
             |> Json.Decode.instant
             |> JsonResult.getOrThrow
             |> Expect.equal "Can be gotten as a Instant, accurately" e
@@ -431,7 +467,7 @@ let tests =
       let testDTOZulu (i, e: Instant) =
         testCase (sprintf "date time offset %s parses correctly" i) <| fun () ->
           let e = e.ToDateTimeOffset()
-          Json.String i
+          String i
             |> Json.Decode.dateTimeOffset
             |> JsonResult.getOrThrow
             |> Expect.equal "Parses to the right date time offset" e

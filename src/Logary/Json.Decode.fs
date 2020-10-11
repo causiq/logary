@@ -558,7 +558,7 @@ let foldSpan (getTimestamp: unit -> EpochNanoSeconds) (m: Model.SpanMessage) (ke
       |> JsonResult.map (fun s -> m.status <- s; m)
       |> JsonResult.tagOnFail (PropertyTag "status")
 
-  | _ ->
+  | other ->
     JsonResult.pass m
 
 

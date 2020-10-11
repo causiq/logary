@@ -29,7 +29,7 @@ let pointName: JsonEncoder<PointName> =
   fun pn ->
     E.string (pn.ToString())
 
-let idEncoder: JsonEncoder<Id> =
+let idB64: JsonEncoder<Id> =
   fun id ->
     E.string (id.toBase64String())
 
@@ -37,7 +37,7 @@ let idHex: JsonEncoder<Id> =
   fun tId ->
     E.string (tId.to32HexString())
 
-let traceId: JsonEncoder<TraceId> = idEncoder
+let traceId: JsonEncoder<TraceId> = idB64
 let traceIdHex: JsonEncoder<TraceId> = idHex
 
 let spanId: JsonEncoder<SpanId> =
@@ -46,7 +46,7 @@ let spanId: JsonEncoder<SpanId> =
 
 let spanIdHex: JsonEncoder<SpanId> =
   fun sId ->
-    E.string (sId.ToString())
+    E.string (sId.toHexString())
 
 let spanKind: JsonEncoder<SpanKind> =
   (fun x -> x.asInt) >> E.int
@@ -208,7 +208,7 @@ let errorInfos infos = E.arrayWith errorInfo infos
 let logaryMessage: ObjectBuilder<LogaryMessage> =
   fun m ->
     E.required kind "type" m.kind
-    >> E.required idEncoder "id" m.id
+    >> E.required idB64 "id" m.id
     >> E.optional spanId "parentSpanId" m.parentSpanId
     >> E.required pointName "name" m.name
     >> E.required level "level" m.level
@@ -298,9 +298,9 @@ let spanMessageBuilder: ObjectBuilder<SpanMessage> =
     >> E.required E.int64 "finished" s.finished
     >> E.required (E.arrayWith spanLink) "links" (Array.ofSeq s.links)
     >> E.required (E.arrayWith eventMessage) "events" (Array.ofSeq s.events)
+    >> E.required spanStatus "status" s.status
     // "attrs" -> "fields", so we don't serialise these
     // >> E.required (E.readDictWith value) "attrs" s.attrs
-    >> E.required spanStatus "status" s.status
 
 let spanMessage: JsonEncoder<SpanMessage> =
   E.jsonObjectWith spanMessageBuilder

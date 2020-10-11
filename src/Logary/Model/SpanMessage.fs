@@ -1,6 +1,7 @@
 namespace Logary.Model
 
 open System.Diagnostics
+open System.Text
 open Logary
 open NodaTime
 open Logary.Internals
@@ -205,10 +206,102 @@ type SpanMessage(label: string,
   override x.cloneAndUpdate builder =
     x.writeCopy builder :> LogaryMessageBase
 
+  // equality
+  override x.Equals o =
+    let dictEq (d1: IReadOnlyDictionary<_,_>) (d2: IReadOnlyDictionary<_,_>) =
+      if d1.Count <> d2.Count then false else
+      let mutable stillTrue = true
+      use d1e = d1.GetEnumerator()
+      while stillTrue && d1e.MoveNext() do
+        let (KeyValue (k, v)) = d1e.Current
+        match d2.TryGetValue k with
+        | false, _ ->
+          stillTrue <- false
+        | true, v2 ->
+          stillTrue <- v = v2
+      stillTrue
+
+    let listEq (xs1: IReadOnlyList<_>) (xs2: IReadOnlyList<_>) =
+      if xs1.Count <> xs2.Count then false else
+      let mutable stillTrue = true
+      let mutable i = 0
+      while stillTrue && i < xs1.Count do
+        stillTrue <- xs1.[i] = xs2.[i]
+        i <- i + 1
+      stillTrue
+
+    match o with
+    | :? Logary.SpanMessage as oM ->
+      let xM = x :> Logary.SpanMessage
+      let xL = x :> LogaryMessage
+      let oL = oM :> LogaryMessage
+      oM.label = xM.label
+      && oM.context = xM.context
+      && oM.kind = xM.kind
+      && oM.started = xM.started
+      && oM.finished = xM.finished
+      && oM.flags = xM.flags
+      && oM.status = xM.status
+      && listEq oM.links xM.links
+      && dictEq oM.fields xM.fields
+      && listEq oM.events xM.events
+      && oL.id = xL.id
+      && oL.name = xL.name
+      && oL.level = xL.level
+      && oL.received = xL.received
+      && oL.timestamp = xL.timestamp
+      && dictEq oL.context xL.context
+      && dictEq oL.gauges xL.gauges
+      && oL.parentSpanId = xL.parentSpanId
+
+    | _ ->
+      false
+
+
+  // pretty printing (for tests primarily)
+
+  override x.ToString() =
+    let xM = x :> Logary.SpanMessage
+    let xL = x :> LogaryMessage
+    let sb = StringBuilder()
+    let line (line: string) = sb.AppendLine line |> ignore
+    let lineIndent indent prefix (str: string) = line (System.String(' ', indent) + prefix + ": " + str)
+    let lineI prefix (str: string) = lineIndent 2 prefix str
+    let lineII prefix (str: string) = lineIndent 4 prefix str
+    line "Model.SpanMessage"
+    line "-----------------"
+    line "  context:"
+    lineII "traceId" (xM.context.traceId.ToString())
+    lineII "spanId" (xM.context.spanId.ToString())
+    lineII "parentSpanId" (xM.context.parentSpanId |> Option.map (sprintf "%O") |> Option.defaultValue "-")
+    lineII "flags" (xM.context.flags.ToString())
+    lineII "traceContext" (xM.context.traceContext.ToString())
+    lineII "traceState" (xM.context.traceState.ToString())
+    lineI "kind" (xM.kind.ToString())
+    lineI "started" (xM.started.ToString())
+    lineI "finished" (xM.finished.ToString())
+    lineI "flags" (xM.flags.ToString())
+    lineI "status" (xM.status.ToString())
+    lineI "# fields (aka. attrs)" (xM.fields.Count.ToString())
+    lineI "# events" (xM.events.Count.ToString())
+    lineI "# links" (xM.links.Count.ToString())
+    line "  ................"
+    line "  :> LogaryMessage"
+    lineI "id" (xL.id.ToString())
+    lineI "name" (xL.name.ToString())
+    lineI "level" (xL.level.ToString())
+    lineI "received" (xL.received |> Option.map (sprintf "%O") |> Option.defaultValue "-")
+    lineI "timestamp" (xL.timestamp.ToString())
+    lineI "# context" (xL.context.Count.ToString())
+    lineI "# gauges" (xL.gauges.Count.ToString())
+    lineI "parentSpanId" (xL.parentSpanId |> Option.map (sprintf "%O") |> Option.defaultValue "-")
+    sb.ToString()
+
+  // interfaces
   interface Logary.SpanMessage with
     member __.label = _label
     member __.context = _context
-    member __.kind = spanKind
+    member __.kind = _spanKind
     member __.started = base.timestamp
     member __.finished = _finished |> Option.defaultValue 0L
     member __.flags = _context.flags
