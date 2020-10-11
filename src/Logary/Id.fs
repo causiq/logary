@@ -42,8 +42,6 @@ type Id =
   member x.to32HexString() =
     String.Format("{0:x16}{1:x16}", x.high, x.low)
 
-  override x.ToString() =
-    if x.high = 0L then String.Format("{0:x16}", x.low)
-    else String.Format("{0:x16}{1:x16}", x.high, x.low)
+  override x.ToString() = x.toBase64String()
 
 

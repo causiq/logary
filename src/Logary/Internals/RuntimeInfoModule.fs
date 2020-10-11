@@ -35,7 +35,7 @@ module RuntimeInfo =
       logger = other.logger }
 
   let ofServiceAndHost service host =
-    create { service=service; detail=Hostname host :: [] }
+    create { service=service; detail=Hostname host :: []; analyticsAppId="LA-35710335" }
 
   let setGetTimestamp (getTimestamp: _) (ri: RuntimeInfoValue) =
     { ri with getTimestamp = getTimestamp }

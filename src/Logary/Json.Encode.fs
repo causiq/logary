@@ -210,7 +210,7 @@ let logaryMessage: ObjectBuilder<LogaryMessage> =
     E.required kind "type" m.kind
     >> E.required idEncoder "id" m.id
     >> E.optional spanId "parentSpanId" m.parentSpanId
-    >> E.required pointName "logger" m.name
+    >> E.required pointName "name" m.name
     >> E.required level "level" m.level
     >> E.optional E.int64 "received" m.received
     >> E.required E.int64 "timestamp" m.timestamp
@@ -274,21 +274,28 @@ let eventMessage: JsonEncoder<EventMessage> =
 
 let spanStatus: JsonEncoder<SpanStatus> =
   let spanCanonicalCode = int >> E.int
+
   let inner (code, desc) =
     E.required E.string "type" "spanStatus"
     >> E.required spanCanonicalCode "code" code
     >> E.optional E.string "description" desc
-  E.jsonObjectWith inner
+
+  let objectEncoder = E.jsonObjectWith inner
+
+  function
+  | _, Some _ as value ->
+    objectEncoder value
+  | code, _ ->
+    spanCanonicalCode code
 
 let spanMessageBuilder: ObjectBuilder<SpanMessage> =
   fun s ->
     E.requiredMixin logaryMessage s
-    >> E.requiredMixin spanContextBuilder s.context
+    >> E.required spanContext "spanContext" s.context
     >> E.required E.string "label" s.label
     >> E.required spanKind "kind" s.kind
     >> E.required E.int64 "started" s.started
     >> E.required E.int64 "finished" s.finished
-    >> E.required spanFlags "flags" s.flags
     >> E.required (E.arrayWith spanLink) "links" (Array.ofSeq s.links)
     >> E.required (E.arrayWith eventMessage) "events" (Array.ofSeq s.events)
     // "attrs" -> "fields", so we don't serialise these

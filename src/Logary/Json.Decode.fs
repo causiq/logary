@@ -334,17 +334,26 @@ let errorInfo: JsonDecoder<ErrorInfo> =
 
 let errorInfos = D.arrayWith errorInfo
 
-/// Decodes a timestamp from milliseconds, microseconds or nanoseconds.
-let numericTimestamp (minI, maxI): JsonDecoder<EpochNanoSeconds> =
-  let rec interpret (prev: int64, n: int64) =
-    if n = 0L then 0L else
-    let i = Instant.ofEpoch n
-    if i > maxI || n < prev (* wrap-around case*) then prev // we've gone past max expected, settle for the prev (which might be the initial value!)
-    elif i < minI then interpret (n, n * 1000L) // it's less than our minimum, bump it three magnitudes and try again
-    else n // we're within out interval; we've found a realistic timestamp
+/// Decodes a timestamp from milliseconds, microseconds or nanoseconds, as long as it turns
+/// out to be between minTS and maxTS; otherwise retuns the value of `now`.
+let numericTimestamp (now: EpochNanoSeconds) (minTS, maxTS): JsonDecoder<EpochNanoSeconds> =
+  let minTS, maxTS = min minTS maxTS, max minTS maxTS // ensure ranges
 
-  and loop initial =
-    interpret (initial, initial)
+  let rec interpret (n: int64, iteration: int64) =
+    if n > maxTS then
+      now // [minI,maxI] wasn't hit
+    elif n < minTS then
+      let nextN = n * 1000L
+      if nextN <= n then
+        // wrap case; let's bail with the `now` value
+        now
+      else
+        // it's less than our minimum, bump it three magnitudes and try again
+        interpret (nextN, iteration+1L)
+    else
+      n // we're within our interval; we've found a realistic timestamp
+
+  and loop x = interpret (x, 1L)
 
   D.int64 |> Decoder.map loop
 
@@ -358,19 +367,23 @@ let stringTimestamp: JsonDecoder<EpochNanoSeconds> =
     isoString json
       |> JsonResult.tagOnFail (PropertyTag "timestamp / isoString")
 
-let timestamp (clock: IClock): JsonDecoder<EpochNanoSeconds> =
+let timestamp (getTimestamp: unit -> EpochNanoSeconds): JsonDecoder<EpochNanoSeconds> =
   fun json ->
-    let now = clock.GetCurrentInstant()
-    let minI, maxI = now - Duration.FromDays(365 * 2), now + Duration.FromDays(365 * 2)
+    let now = getTimestamp ()
+    let minI, maxI =
+      now - Duration.FromDays(365 * 2).ToInt64Nanoseconds(),
+      now + Duration.FromDays(365 * 2).ToInt64Nanoseconds()
     let decoder =
       match json with
+      | Number n when n <> "0" ->
+        numericTimestamp now (minI, maxI)
       | Number _ ->
-        numericTimestamp (minI, maxI)
+        Decoder.always (JsonResult.pass now)
       | _ ->
         stringTimestamp
     decoder json
 
-let foldIntoBase (clock: IClock) (acc: #Model.LogaryMessageBase) (key: string, json: Json): JsonResult<#Model.LogaryMessageBase> =
+let foldIntoBase (getTimestamp: unit -> EpochNanoSeconds) (acc: #Model.LogaryMessageBase) (key: string, json: Json): JsonResult<#Model.LogaryMessageBase> =
   match key with
   | "id" ->
     D.eitherNamed ("id of base64", idB64)
@@ -378,23 +391,26 @@ let foldIntoBase (clock: IClock) (acc: #Model.LogaryMessageBase) (key: string, j
                   json
       |> JsonResult.map (fun mId -> acc.id <- mId; acc)
       |> JsonResult.tagOnFail (PropertyTag "id")
+
   | "parentSpanId" ->
     D.eitherNamed ("parentSpanId of base64", spanId)
                   ("parentSpanId of hex", spanIdHex)
                   json
       |> JsonResult.map (fun spanId -> acc.parentSpanId <- Some spanId; acc)
       |> JsonResult.tagOnFail (PropertyTag "parentSpanId")
+
   | "name" ->
     pointName json
       |> JsonResult.map (fun name -> acc.name <- name; acc)
       |> JsonResult.tagOnFail (PropertyTag "name")
+
   | "level" ->
     level json
       |> JsonResult.map (fun level -> acc.level <- level; acc)
       |> JsonResult.tagOnFail (PropertyTag "level")
 
   | "timestamp" ->
-    timestamp clock json
+    timestamp getTimestamp json
       |> JsonResult.map (fun ts -> acc.timestamp <- ts; acc)
       |> JsonResult.tagOnFail (PropertyTag "timestamp")
 
@@ -435,11 +451,11 @@ let eventMessageReader clock: ObjectReader<Logary.Model.Event> =
   logaryMessageWith clock ctorDecoder (fun (event, monetaryValue, error) ->
       Model.Event(event, monetaryValue, ?error=error))
 
-let eventMessage (clock: IClock): JsonDecoder<Logary.Model.Event> =
-  D.jsonObjectWith (eventMessageReader clock)
+let eventMessage (getTimestamp: unit -> EpochNanoSeconds): JsonDecoder<Logary.Model.Event> =
+  D.jsonObjectWith (eventMessageReader getTimestamp)
 
-let eventMessageInterface clock: JsonDecoder<Logary.EventMessage> =
-  eventMessage clock |> Decoder.map (fun m -> m :> Logary.EventMessage)
+let eventMessageInterface clock: JsonDecoder<EventMessage> =
+  eventMessage clock |> Decoder.map (fun m -> m :> EventMessage)
 
 
 let gaugeMessageReader clock: ObjectReader<Model.GaugeMessage> =
@@ -450,8 +466,8 @@ let gaugeMessageReader clock: ObjectReader<Model.GaugeMessage> =
 
   logaryMessageWith clock ctorDecoder (fun (g, labels) -> Model.GaugeMessage(g, labels))
 
-let gaugeMessage (clock: IClock): JsonDecoder<Model.GaugeMessage> =
-  D.jsonObjectWith (gaugeMessageReader clock)
+let gaugeMessage (getTimestamp: unit -> EpochNanoSeconds): JsonDecoder<Model.GaugeMessage> =
+  D.jsonObjectWith (gaugeMessageReader getTimestamp)
 
 
 let histogramMessageReader clock: ObjectReader<Model.HistogramMessage> =
@@ -463,11 +479,11 @@ let histogramMessageReader clock: ObjectReader<Model.HistogramMessage> =
 
   logaryMessageWith clock ctorDecoder (fun (labels, buckets, sum) -> Model.HistogramMessage(labels, buckets, sum))
 
-let histogramMessage (clock: IClock): JsonDecoder<Model.HistogramMessage> =
-  D.jsonObjectWith (histogramMessageReader clock)
+let histogramMessage (getTimestamp: unit -> EpochNanoSeconds): JsonDecoder<Model.HistogramMessage> =
+  D.jsonObjectWith (histogramMessageReader getTimestamp)
 
 
-let foldSpan (clock: IClock) (m: Model.SpanMessage) (key: string, json: Json): JsonResult<Model.SpanMessage> =
+let foldSpan (getTimestamp: unit -> EpochNanoSeconds) (m: Model.SpanMessage) (key: string, json: Json): JsonResult<Model.SpanMessage> =
   match key with
   | "label" ->
     D.string json
@@ -508,12 +524,12 @@ let foldSpan (clock: IClock) (m: Model.SpanMessage) (key: string, json: Json): J
       |> JsonResult.tagOnFail (PropertyTag "kind")
 
   | "started" ->
-    timestamp clock json
+    timestamp getTimestamp json
       |> JsonResult.map (fun started -> m.started <- started; m)
       |> JsonResult.tagOnFail (PropertyTag "started")
 
   | "finished" ->
-    timestamp clock json
+    timestamp getTimestamp json
       |> JsonResult.map (fun finished -> m.finished <- Some finished; m)
       |> JsonResult.tagOnFail (PropertyTag "finished")
 
@@ -528,7 +544,7 @@ let foldSpan (clock: IClock) (m: Model.SpanMessage) (key: string, json: Json): J
       |> JsonResult.tagOnFail (PropertyTag "links")
 
   | "events" ->
-    D.arrayWith (eventMessageInterface clock) json
+    D.arrayWith (eventMessageInterface getTimestamp) json
       |> JsonResult.map (fun es -> m.setEvents es; m)
       |> JsonResult.tagOnFail (PropertyTag "events")
 
@@ -558,8 +574,8 @@ let spanMessageReader clock: ObjectReader<Model.SpanMessage> =
 
   logaryMessageWith clock ctorDecoder (fun m -> m)
 
-let spanMessage (clock: IClock): JsonDecoder<Model.SpanMessage> =
-  D.jsonObjectWith (spanMessageReader clock)
+let spanMessage (getTimestamp: unit -> EpochNanoSeconds): JsonDecoder<Model.SpanMessage> =
+  D.jsonObjectWith (spanMessageReader getTimestamp)
 
 
 let identifyUserMessageReader clock: ObjectReader<Model.IdentifyUserMessage> =
@@ -572,8 +588,8 @@ let identifyUserMessageReader clock: ObjectReader<Model.IdentifyUserMessage> =
     Model.IdentifyUserMessage(prevUserId, newUserId))
 
 
-let identifyUserMessage (clock: IClock): JsonDecoder<Model.IdentifyUserMessage> =
-  D.jsonObjectWith (identifyUserMessageReader clock)
+let identifyUserMessage (getTimestamp: unit -> EpochNanoSeconds): JsonDecoder<Model.IdentifyUserMessage> =
+  D.jsonObjectWith (identifyUserMessageReader getTimestamp)
 
 
 let setUserPropertyMessageReader clock: ObjectReader<Model.SetUserPropertyMessage> =
@@ -615,7 +631,7 @@ let logaryMessageReader: ObjectReader<Model.LogaryMessageBase> =
       | MessageKind.Control         ->
         fun _ _ -> JsonResult.messageTypeUnknown "ControlMessage are not accepted for deserialisation"
 
-    Global.clockD |> DVar.mapFun reader
+    Global.getTimestampD |> DVar.mapFun reader
 
   D.required kind "type" |> Decoder.bind parseByType
 

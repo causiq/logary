@@ -115,6 +115,13 @@ module Json =
     | other ->
       failtestf "%s Expected Json.String, but was %A" message other
 
+  let isNumberX message convert (value: Json) =
+    match value with
+    | Number inner ->
+      convert inner
+    | other ->
+      failtestf "%s Expected Json.String, but was %A" message other
+
   /// Assert and pass through the found field.
   let hasFieldX message field (value: JsonObject) =
     value

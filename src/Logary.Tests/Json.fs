@@ -5,6 +5,7 @@ open System
 open Expecto
 open Expecto.Flip
 open Expecto.Logging
+open Logary.Model
 open NodaTime
 open NodaTime.Text
 let logger = Log.create "Logary.Tests.Json"
@@ -85,8 +86,6 @@ let tests =
   let namedPair suffix encode decode =
     pairWithJSON (Some suffix) encode decode None
 
-  let clock = MonotonicClock.instance
-
   // TODO: support control characters in FsParsec; this test hangs .Net Core:
   // pairWithJSON (Some " problematic") E.eventMessage (D.eventMessage clock) None
   namedPair " = SpanId" E.spanId D.spanId
@@ -97,24 +96,24 @@ let tests =
   pair E.errorInfo D.errorInfo
   pair E.errorInfos D.errorInfos
   pair E.gauge D.gauge
-  pair E.gaugeMessage (D.gaugeMessage clock)
-  pair E.histogramMessage (D.histogramMessage clock)
+  pair E.gaugeMessage (D.gaugeMessage MonotonicClock.getTimestamp)
+  pair E.histogramMessage (D.histogramMessage MonotonicClock.getTimestamp)
   pair E.idEncoder D.idB64
-  pair E.identifyUserMessage (D.identifyUserMessage clock)
+  pair E.identifyUserMessage (D.identifyUserMessage MonotonicClock.getTimestamp)
   pair E.kind D.kind
   pair E.level D.level
   pair E.moduleInfo D.moduleInfo
   pair E.pointName D.pointName
   pair E.resource D.resource
-  pair E.setUserPropertyMessage (D.setUserPropertyMessage clock)
-  pair E.forgetUserMessage (D.forgetUserMessage clock)
+  pair E.setUserPropertyMessage (D.setUserPropertyMessage MonotonicClock.getTimestamp)
+  pair E.forgetUserMessage (D.forgetUserMessage MonotonicClock.getTimestamp)
   pair E.spanContext D.spanContext
   pair E.spanKind D.spanKind
   pair E.spanLink D.spanLink
   pair E.stackTrace D.stackTrace
   pair E.units D.units
   pair E.value D.value
-  pair E.spanMessage (D.spanMessage clock)
+  pair E.spanMessage (D.spanMessage MonotonicClock.getTimestamp)
 
   testList "json" [
     testList "encode" (List.ofSeq toEncode)
@@ -124,10 +123,15 @@ let tests =
       testPropertyWithConfigStdGen (879933225, 296761504) fsc "roundtrip Logary.Currency" (buildRoundtrip (E.currency, D.currency))
       testRoundtrip None (E.units, D.units)
       testPropertyWithConfig fsc "can generate Model.Event" <| fun (e: Model.Event) -> ignore e
-      testDecode None (D.eventMessage clock) (fun () -> Json.parse """{"type":"event","event":"Hello world"}""" |> JsonResult.getOrThrow)
-      testDecode (Some " simplest") (D.eventMessage clock) (fun () -> Json.parse """{"type":"event","event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}""" |> JsonResult.getOrThrow)
 
-      testDecode (Some " w ts") (D.eventMessage clock) (fun () -> E.eventMessage (Model.Event("Hello world 3")))
+      testDecode None (D.eventMessage MonotonicClock.getTimestamp) (fun () ->
+        Json.parse """{"type":"event","event":"Hello world"}""" |> JsonResult.getOrThrow)
+
+      testDecode (Some " simplest") (D.eventMessage MonotonicClock.getTimestamp) (fun () ->
+        Json.parse """{"type":"event","event":"Hello world 2", "timestamp":"2010-02-03T04:55:00Z"}""" |> JsonResult.getOrThrow)
+
+      testDecode (Some " w ts") (D.eventMessage MonotonicClock.getTimestamp) (fun () ->
+        E.eventMessage (Model.Event("Hello world 3")))
 
       // TODO: support control characters in FsParsec; this test hangs .Net Core inside F# Core
       //ptestDecode (Some " eventmessage.1.json") (D.eventMessage clock) (fun () -> File.ReadAllText "sample-data/eventmessage.1.json" |> Json.parse |> JsonResult.getOrThrow)
@@ -216,15 +220,181 @@ let tests =
         res.events.Count
           |> Expect.equal "Has eight events" 8
 
-      // TODO:
       ftestCase "pretty print Logary JS span message" <| fun () ->
-        ()
+        let mId = Id.ofBase64String "hUHk5sAImztkm18PlRNRrw=="
+        let span =
+          SpanMessage(
+            "GET /", id, 1234L,
+            SpanContext(TraceId.create(), SpanId.create(), Some (SpanId.create()), SpanFlags.Sampled),
+            SpanKind.Server,
+            ResizeArray<_>(),
+            Map.empty,
+            ResizeArray<_>(),
+            (SpanCanonicalCode.AlreadyExists, Some "Cannot do, resource already exists"),
+            id,
+            mId,
+            PointName [| "Logary Analytics"; "Prod" |],
+            LogLevel.Warn,
+            Map.empty |> Map.add "appId" (Value.Str "LA-35710335")
+          )
+
+        span.finished <- Some 4321L
+
+        (span.elapsed, Duration.Zero)
+          |> Expect.isGreaterThan "Zero"
+
+        let json =
+          span
+            |> E.spanMessage
+
+        let subject =
+          json
+            |> function Object m -> m | _ -> failwith "Unexpected type"
+
+        let expectStringProp prop expectedString subject =
+          subject
+            |> Expect.Json.hasFieldX "Has expected property" prop
+            |> Expect.Json.isStringX (sprintf "Expected prop %s to be a string" prop)
+            |> Expect.equal (sprintf "Expected prop %s to have string equal" prop) expectedString
+
+        let expectIntProp prop expectedInt subject =
+          subject
+            |> Expect.Json.hasFieldX "Has expected property" prop
+            |> Expect.Json.isNumberX (sprintf "Expected prop %s to be a string" prop) int
+            |> Expect.equal (sprintf "Expected prop %s to have string equal" prop) expectedInt
+
+        subject
+          |> expectStringProp "type" "span"
+
+        subject
+          |> expectIntProp "timestamp" 1234
+
+        subject
+          |> JsonObject.tryFind "flags"
+          |> Expect.isNone "'flags' property is inside 'spanContext' not parent"
+
+        subject
+          |> expectStringProp "id" (mId.toBase64String())
+
+        subject
+          |> expectStringProp "name" (span.name.ToString())
+
+        subject
+          |> expectStringProp "level" "info"
+
+        subject
+          |> Expect.Json.hasFieldX "Has context" "context"
+          |> Expect.Json.isObjectX "Is object"
+          |> Expect.Json.hasFieldX "Has appId" "appId"
+          |> Expect.Json.isStringX "appId is a string"
+          |> Expect.equal "Has the right value" "LA-35710335"
+
+        subject
+          |> expectIntProp "kind" SpanKind.Server.asInt
+
+
+        // span context
+        let spanContext =
+          subject
+            |> Expect.Json.hasFieldX "Has 'spanContext' property"
+                                     "spanContext"
+            |> Expect.Json.isObjectX "Is object at this location"
+
+        spanContext
+          |> Expect.Json.hasFieldX "Has 'flags' property in spanContext"
+                                   "flags"
+          |> Expect.Json.isNumberX "flags" int
+          |> Expect.equal "'flags' property is inside 'spanContext'" 1
+
+        spanContext
+          |> expectStringProp "parentSpanId" (span.context.parentSpanId.Value.toBase64String())
+        spanContext
+          |> expectStringProp "spanId" (span.context.spanId.toBase64String())
+        spanContext
+          |> expectStringProp "traceId" (span.context.traceId.toBase64String())
+
+        let roundtripped =
+          json
+            |> D.spanMessage (fun () -> 1234L)
+            |> JsonResult.getOrThrow
+
+        let roundtrippedJSON =
+          roundtripped
+            |> E.spanMessage
+
+        let messageDescriptor = sprintf "original:\n%s\n\nrountripped:\n%s" (Json.formatWith JsonFormattingOptions.Pretty json) (Json.formatWith JsonFormattingOptions.Pretty roundtrippedJSON)
+
+        roundtrippedJSON
+          |> Expect.equal (sprintf "Back to JSON:\n%s" messageDescriptor) json
+
+        //printfn "subject=%s" (Json.formatWith JsonFormattingOptions.Pretty json)
+    ]
+
+    testList "deserialise timestamp" [
+      // by using NodaTime, which uses Ticks internally, we'll lose two significant digits
+      let now = 1234L
+      let getTS () = now
+
+      testCase "zero => now instead" <| fun () ->
+        D.timestamp getTS (Number "0")
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of Number uses now instead" now
+
+      testCase "accepts Number" <| fun () ->
+        D.timestamp getTS (Number "1234")
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of Number" now
+
+      testCase "accepts ISO8601 w second resolution" <| fun () ->
+        D.timestamp getTS (String "1970-01-01T00:00:00Z")
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of Number" 0L
+
+      testCase "accepts ISO8601 w nanosecond resolution, parses to BCL Tick resolution" <| fun () ->
+        D.timestamp getTS (String "1970-01-01T00:00:00.000004507Z")
+          //                                                ^^ least significant digits parsed by NodaTime
+          //                                                  ^^ these are 10x and 1x nanoseconds, skipped by NodaTime
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of Number" 4500L
+
+      testCase "drift corrects to logary clock" <| fun () ->
+        D.numericTimestamp now (1233L, 1233L) (Number "1235")
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of higher Number" now
+
+        D.numericTimestamp now (1233L, 1233L) (Number "1232")
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of lower Number" now
+
+      testCase "lower bound accepted" <| fun () ->
+        D.numericTimestamp now (1233L, 1235L) (Number "1233")
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of Number" 1233L
+
+      testCase "upper bound accepted" <| fun () ->
+        D.numericTimestamp now (1233L, 1235L) (Number "1235")
+          |> JsonResult.getOrThrow
+          |> Expect.equal "of Number" 1235L
+
+      testProperty "cannot crash" <| fun (now, minTS, maxTS, received: int64) ->
+        D.numericTimestamp now (minTS, maxTS) (Number (received.ToString()))
+          |> JsonResult.getOrThrow
+          |> ignore
+
+      testCase "deserialise unix epoch in ms" <| fun () ->
+        let nowMS = 1602367531000L // ms
+        let nowNS = nowMS * 1_000_000L
+        let minTS = nowNS - Duration.FromDays(365).ToInt64Nanoseconds()
+        let maxTS = nowNS + Duration.FromDays(365).ToInt64Nanoseconds()
+        D.numericTimestamp nowNS (minTS, maxTS) (Number (nowMS.ToString()))
+          |> JsonResult.getOrThrow
+          |> Expect.equal "The current TS" nowNS
     ]
 
     testList "offset date time" [
       yield testCase "ISO8601" <| fun () ->
         let expected = DateTimeOffset.Parse("2018-08-01T01:23:45Z")
-        Json.String "2018-08-01T01:23:45Z"
+        String "2018-08-01T01:23:45Z"
           |> Json.Decode.dateTimeOffset
           |> JsonResult.getOrThrow
           |> Expect.equal "Parses to the right date time offset" expected

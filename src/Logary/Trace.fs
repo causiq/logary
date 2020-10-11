@@ -34,7 +34,7 @@ type SpanId =
     | Some v ->
       v
 
-  override x.ToString() = String.Format("{0:x16}", x.id)
+  override x.ToString() = x.toBase64String()
 
 [<Flags; RequireQualifiedAccess>]
 type SpanFlags =

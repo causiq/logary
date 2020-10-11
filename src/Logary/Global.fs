@@ -34,6 +34,9 @@ let internal clockD =
 let internal lockD =
   configD |> DVar.map (fun x -> x.consoleLock)
 
+let internal getTimestampD =
+  configD |> DVar.map (fun x -> x.getTimestamp)
+  
 /// The flyweight references the current configuration. If you want multiple per-process logging setups, then don't use
 /// the static methods, but instead pass a Logger instance around, setting the name field of the Message value you pass
 /// into the Logger.

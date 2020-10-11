@@ -38,7 +38,6 @@ type SpanMessage(label: string,
   let mutable _spanKind = spanKind
   let mutable _label = label
   let mutable _finished = None
-  let mutable _flags = _context.flags
   let mutable _status = status
   let mutable _highestLevel = Info
   let _semaphore = obj ()
@@ -75,7 +74,7 @@ type SpanMessage(label: string,
 
   let _setFlags (setFlags: SpanFlags -> SpanFlags) =
     lock _semaphore <| fun () ->
-    _flags <- setFlags _flags
+    _context <- _context.withFlags (setFlags _context.flags)
 
   new() =
     SpanMessage("", id, 0L, SpanContext.Zero, SpanKind.Internal, ResizeArray<_>(), Map.empty, ResizeArray<_>(), (SpanCanonicalCode.OK, None), id)
@@ -116,7 +115,7 @@ type SpanMessage(label: string,
 
       // ensure we set the sampled flag if level >= Warn
       if message.level >= Warn then
-        _flags <- _flags ||| SpanFlags.Sampled
+        _context <- _context.withFlags (_context.flags ||| SpanFlags.Sampled)
 
       // set the error flag when errors are logged
       if message.level >= Error then
@@ -140,8 +139,8 @@ type SpanMessage(label: string,
      and set v = _label <- v
 
   member x.flags
-    with get () = _flags
-     and set v = _flags <- v
+    with get () = _context.flags
+     and set v = _context <- _context.withFlags v
 
   member x.spanKind
     with get () = _spanKind
@@ -212,7 +211,7 @@ type SpanMessage(label: string,
     member __.kind = spanKind
     member __.started = base.timestamp
     member __.finished = _finished |> Option.defaultValue 0L
-    member __.flags = _flags
+    member __.flags = _context.flags
     member __.links = links :> IReadOnlyList<_>
     member __.events = events :> IReadOnlyList<_>
     member __.attrs = base.fields :> _

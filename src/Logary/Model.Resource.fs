@@ -28,11 +28,11 @@ type ResourceLocation =
 type Resource =
   { service: string
     detail: ResourceLocation list
-    /// Formats the resource as a set of key-value pairs describing the location that this software runs.
+    analyticsAppId: string
   }
 
-  static member create(service, detail) =
-    { service=service; detail=detail }
+  static member create(service, detail, ?analyticsAppId) =
+    { service=service; detail=detail; analyticsAppId=defaultArg analyticsAppId "LA-35710335" }
   static member create(service, ?host) =
     if host.IsSome then
       Resource.create(service, Hostname host.Value :: [])
@@ -41,7 +41,7 @@ type Resource =
 
 module Resource =
   let ofLabels (xs: #seq<string * string>) =
-    let state = { service = ""; detail = [] }
+    let state = { service = ""; detail = []; analyticsAppId="LA-35710335" }
 
     let addK8s s v =
       match s.detail |> List.tryPick (function Kubernetes k -> Some k | _ -> None) with
@@ -75,9 +75,11 @@ module Resource =
   let ofMap m =
     m |> Seq.map (fun (KeyValue (k, v)) -> k, v) |> ofLabels
 
+  /// Formats the resource as a set of key-value pairs describing the location that this software runs.
   let asLabels (x: Resource) =
     seq {
       yield "service", x.service
+      yield "logary_analytics_app_id", x.analyticsAppId
       for detail in x.detail do
         match detail with
         | Named (k, v) -> yield k, v

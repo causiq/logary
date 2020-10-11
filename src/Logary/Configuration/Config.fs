@@ -37,6 +37,7 @@ module Config =
       logResultHandler: ProcessResult -> unit
       waitForTargetsTimeout: Duration
       metricRegistry: MetricRegistry
+      analyticsAppId: string
     }
 
   let create (resource: Model.Resource) =
@@ -64,6 +65,7 @@ module Config =
       logResultHandler = errorHandler
       waitForTargetsTimeout = Duration.FromSeconds 3L
       metricRegistry   = Global.defaultConfig.metrics
+      analyticsAppId   = "LA-35710335"
     }
 
   let target (tconf: TargetConf) (conf: T) =
