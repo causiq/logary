@@ -48,6 +48,7 @@ nuget elmah.io.client
 nuget elmah.io.core
 nuget fszmq
 nuget protobuf-net
+nuget Newtonsoft.Json.Schema
 
 
 # nuget Microsoft.AspNetCore.Grpc.HttpApi ~> 0.1.0-alpha

@@ -1,13 +1,17 @@
 module Logary.Tests.Json
 
-//open System.IO
 open System
+open System.Text
 open Expecto
 open Expecto.Flip
 open Expecto.Logging
+open Expecto.Logging.Message
 open Logary.Model
+open Newtonsoft.Json.Linq
+open Newtonsoft.Json.Schema
 open NodaTime
 open NodaTime.Text
+
 let logger = Log.create "Logary.Tests.Json"
 
 open Logary
@@ -498,6 +502,41 @@ let tests =
 
       yield! offsetSamples |> List.map testDTOPlus
     ]
+
+    testList "matches JSON schema" [
+      let rec printErrorInner (indent: int, sb: StringBuilder) (ve: ValidationError) =
+        let em = ve.GetType().GetMethod("GetExtendedMessage", Reflection.BindingFlags.NonPublic ||| Reflection.BindingFlags.Instance).Invoke(ve, [||]) :?> string
+        sb.AppendLine(System.String.Format("{0}{1}", System.String(' ', indent), em)) |> ignore
+        if ve.ChildErrors.Count > 0 then
+          for innerVE in ve.ChildErrors do
+            ignore (printErrorInner (indent + 2, sb) innerVE)
+        sb
+
+      and printErrors (ve: ValidationError) =
+        let sb = printErrorInner (0, StringBuilder()) ve
+        sb.ToString()
+
+      // load schema
+      let resolver = JSchemaUrlResolver()
+      let schema = JSchema.Parse("""{"$ref": "https://app.logary.tech/schemas/logary-message.schema.json"}""", resolver)
+
+      let jsonEncodingMatchesSchema (m: LogaryMessageBase) =
+        let jsonStr = E.logaryMessageBase m |> Json.formatWith JsonFormattingOptions.Compact
+        let jToken = JToken.Parse(jsonStr)
+
+        // validate json
+        let mutable errors = ResizeArray<ValidationError>() :> System.Collections.Generic.IList<_>
+        if not (jToken.IsValid(schema, &errors)) then
+          let errors = errors |> Seq.map printErrors |> String.concat "\n\n"
+          logger.info (eventX "Failed validation with errors:\n{errors}" >> setField "errors" errors)
+          false
+        else
+          true
+
+      yield testPropertyWithConfig fsc "any LogaryMessage" jsonEncodingMatchesSchema
+//      yield etestPropertyWithConfig (471357911, 296803816) fsc "GaugeMessage crashes Chiron" jsonEncodingMatchesSchema
+    ]
+
 
   ]
   |> testLabel "logary"

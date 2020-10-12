@@ -1,17 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <Protobuf ProtoRoot="..\Proto" Include="..\Proto\opentelemetry\proto\common\v1\common.proto" Link="Proto\common.proto" />
     <Protobuf ProtoRoot="..\Proto" Include="..\Proto\opentelemetry\proto\resource\v1\resource.proto" Link="Proto\resource.proto" />
     <Protobuf ProtoRoot="..\Proto" Include="..\Proto\opentelemetry\proto\trace\v1\trace.proto" Link="Proto\trace.proto" />
     <Protobuf ProtoRoot="..\Proto" Include="..\Proto\opentelemetry\proto\collector\trace\v1\trace_service.proto" GrpcServices="Server" Link="Proto\trace_service.proto" />
-
     <PackageReference Include="Grpc.AspNetCore" Version="2.27.0" />
     <PackageReference Include="Google.Api.Gax.Grpc" Version="3.0.0" />
-      
   </ItemGroup>
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

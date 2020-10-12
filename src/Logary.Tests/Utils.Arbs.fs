@@ -1,5 +1,7 @@
 namespace Logary.Tests
 
+open Logary.Model
+
 #nowarn "25"
 
 open System
@@ -9,6 +11,8 @@ open NodaTime
 open Logary
 open FsCheck
 open Logary.Trace
+
+type NonNullStringStringMap = NonNullStringStringMap of m: Map<string, string>
 
 type Arbs =
   static member Domain (): Arbitrary<Domain> =
@@ -54,8 +58,11 @@ type Arbs =
     Arb.Default.TimeSpan()
       |> Arb.convert (Duration.FromTimeSpan) (fun d -> d.ToTimeSpan())
 
-  static member Map() =
-    Arb.Default.Map<NonEmptyString, 'value>()
+  static member NonNullKeyMap(): Arbitrary<NonNullStringStringMap> =
+    Arb.generate<Map<NonEmptyString, NonEmptyString>>
+      |> Gen.map (fun m -> m |> Map.toSeq |> Seq.map (fun (NonEmptyString k, NonEmptyString v) -> k, v) |> Map.ofSeq)
+      |> Gen.map NonNullStringStringMap
+      |> Arb.fromGen
 
   static member Value() =
     let floats = Arb.generate<NormalFloat> |> Gen.map (fun (NormalFloat f) -> Value.Float f)
@@ -111,7 +118,7 @@ type Arbs =
     }
     |> Arb.fromGen
 
-  static member ModelIdentifyUserMessage(): Arbitrary<Logary.Model.IdentifyUserMessage> =
+  static member ModelIdentifyUserMessage(): Arbitrary<Model.IdentifyUserMessage> =
     gen {
       let! prev = Arb.generate<Id>
       let! next = Arb.generate<Id>
@@ -119,7 +126,7 @@ type Arbs =
     }
     |> Arb.fromGen
 
-  static member ModelSetUserPropertyMessage(): Arbitrary<Logary.Model.SetUserPropertyMessage> =
+  static member ModelSetUserPropertyMessage(): Arbitrary<Model.SetUserPropertyMessage> =
     gen {
       let! userId = Arb.generate<Id>
       let! NonEmptyString keyValue = Arb.generate<NonEmptyString>
@@ -136,7 +143,7 @@ type Arbs =
     }
     |> Arb.fromGen
 
-  static member ModelForgetUserMessage(): Arbitrary<Logary.Model.ForgetUserMessage> =
+  static member ModelForgetUserMessage(): Arbitrary<Model.ForgetUserMessage> =
     gen {
       let uid = Arb.generate<Id>
       let m = Model.ForgetUserMessage(uid.ToString())
@@ -144,12 +151,12 @@ type Arbs =
     }
     |> Arb.fromGen
 
-  static member ModelHistogramMessage(): Arbitrary<Logary.Model.HistogramMessage> =
+  static member ModelHistogramMessage(): Arbitrary<Model.HistogramMessage> =
     gen {
       let registry = MetricRegistry()
       let histogramConf = HistogramConf.create("request_latencies", "An histogram specifying how long each request takes", U.Seconds)
       let genericMetric = registry.getOrCreate histogramConf
-      let! labels = Arb.generate<Map<string, string>>
+      let! (NonNullStringStringMap labels) = Arb.generate<NonNullStringStringMap>
       let metric = genericMetric.withLabels labels
 
       let! len = Gen.choose(0, 15)
@@ -165,10 +172,10 @@ type Arbs =
     }
     |> Arb.fromGen
 
-  static member ModelGaugeMessage(): Arbitrary<Logary.Model.GaugeMessage> =
+  static member ModelGaugeMessage(): Arbitrary<Model.GaugeMessage> =
     gen {
       let! g = Arb.generate<Gauge>
-      let! labels = Arb.generate<Map<string, string>>
+      let! (NonNullStringStringMap labels) = Arb.generate<NonNullStringStringMap>
       return Model.GaugeMessage(g, labels)
     }
     |> Arb.fromGen
@@ -178,7 +185,7 @@ type Arbs =
 //      |> Arb.convert (fun m -> m :> _) (fun m -> m :?> Model.GaugeMessage)
 
 
-  static member ModelEventMessage(): Arbitrary<Logary.Model.Event> =
+  static member ModelEventMessage(): Arbitrary<Model.Event> =
     let generator = gen {
       let! messageId = Arb.generate<Id>
       let! level = Arb.generate<LogLevel>
@@ -216,7 +223,15 @@ type Arbs =
     Arbs.ModelEventMessage()
       |> Arb.convert (fun m -> m :> _) (fun m -> m :?> Model.Event)
 
-  static member ModelSpanMessage(): Arbitrary<Logary.Model.SpanMessage> =
+  static member SpanStatus(): Arbitrary<SpanStatus> =
+    gen {
+      let! code = Arb.generate<SpanStatusCode>
+      let! source = Arb.generate<SpanStatusSource option>
+      let! description = Gen.oneof [ Gen.constant None; Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> s) |> Gen.map Some ]
+      return SpanStatus.create(code, ?description=description, ?source=source)
+    } |> Arb.fromGen
+
+  static member ModelSpanMessage(): Arbitrary<Model.SpanMessage> =
     let generator = gen {
       let! traceId = Arb.generate<TraceId>
       let! spanId = Arb.generate<SpanId>
@@ -240,6 +255,17 @@ type Arbs =
       return dto
     }
     Arb.fromGen generator
+
+  static member ModelLogaryMessageBase(): Arbitrary<LogaryMessageBase> =
+    Gen.oneof [
+      Arb.generate<Model.Event> |> Gen.map (fun m -> m :> LogaryMessageBase)
+      Arb.generate<Model.IdentifyUserMessage> |> Gen.map (fun m -> m :> LogaryMessageBase)
+      Arb.generate<Model.SetUserPropertyMessage> |> Gen.map (fun m -> m :> LogaryMessageBase)
+      Arb.generate<Model.GaugeMessage> |> Gen.map (fun m -> m :> LogaryMessageBase)
+      Arb.generate<Model.SpanMessage> |> Gen.map (fun m -> m :> LogaryMessageBase)
+      Arb.generate<Model.ForgetUserMessage> |> Gen.map (fun m -> m :> LogaryMessageBase)
+      Arb.generate<Model.HistogramMessage> |> Gen.map (fun m -> m :> LogaryMessageBase)
+    ] |> Arb.fromGen
 
   static member Exception() =
     let failer message =
