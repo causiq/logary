@@ -166,6 +166,9 @@ type LogaryMessage with
       | MessageKind.Span when typeof<'t> = typeof<SpanMessage> -> true
       | MessageKind.Gauge when typeof<'t> = typeof<GaugeMessage> -> true
       | MessageKind.Histogram when typeof<'t> = typeof<HistogramMessage> -> true
+      | MessageKind.IdentifyUser when typeof<'t> = typeof<IdentifyUserMessage> -> true
+      | MessageKind.SetUserProperty when typeof<'t> = typeof<SetUserPropertyMessage> -> true
+      | MessageKind.ForgetUser when typeof<'t> = typeof<ForgetUserMessage> -> true
       | _ -> false
     if isMatch then Some (x :?> 't) else None
 
