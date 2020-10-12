@@ -235,46 +235,33 @@ type SpanLink =
   /// Some Spans cause their own "follow up" work. You can link to those predecessors with `FollowsFromSpan`
   | FollowsFromSpan of predecessor: SpanContext * attrs: IReadOnlyDictionary<string, Value>
 
-/// https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
-/// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/api-tracing.md#statuscanonicalcode
+/// https://github.com/open-telemetry/opentelemetry-specification/pull/966/files
+/// https://github.com/open-telemetry/oteps/pull/136
+/// https://github.com/open-telemetry/oteps/blob/master/text/trace/0136-error_flagging.md
 [<RequireQualifiedAccess>]
-type SpanCanonicalCode =
+type SpanStatusCode =
+  /// Unset is the default code
+  | Unset = 0
+  /// The operation errored
+  | Error = 1
   /// The operation completed successfully.
-  | OK = 0
-  /// The operation was cancelled (typically by the caller).
-  | Cancelled = 1
-  /// Unknown error. For example, this error may be returned when a Status value received from another address space belongs to an error space that is not known in this address space. Also errors raised by APIs that do not return enough error information may be converted to this error.
-  | UnknownError = 2
-  /// Client specified an invalid argument. Note that this differs from FailedPrecondition. InvalidArgument indicates arguments that are problematic regardless of the state of the system.
-  | InvalidArgument = 3
-  /// Deadline expired before operation could complete. For operations that change the state of the system, this error may be returned even if the operation has completed successfully.
-  | DeadlineExceeded = 4
-  /// Some requested entity (e.g., file or directory) was not found.
-  | NotFound = 5
-  /// Some entity that we attempted to create (e.g., file or directory) already exists.
-  | AlreadyExists = 6
-  /// The caller does not have permission to execute the specified operation. PermissionDenied must not be used if the caller cannot be identified (use Unauthenticated1 instead for those errors).
-  | PermissionDenied = 7
-  /// Some resource has been exhausted, perhaps a per-user quota, or perhaps the entire file system is out of space.
-  | ResourceExhausted = 8
-  /// Operation was rejected because the system is not in a state required for the operation's execution.
-  | FailedPrecondition = 9
-  /// The operation was aborted, typically due to a concurrency issue like sequencer check failures, transaction aborts, etc.
-  | Aborted = 10
-  /// Operation was attempted past the valid range. E.g., seeking or reading past end of file. Unlike InvalidArgument, this error indicates a problem that may be fixed if the system state changes.
-  | OutOfRange = 11
-  /// Operation is not implemented or not supported/enabled in this service.
-  | Unimplemented = 12
-  /// Internal errors. Means some invariants expected by underlying system has been broken.
-  | InternalError = 13
-  /// The service is currently unavailable. This is a most likely a transient condition and may be corrected by retrying with a backoff.
-  | Unavailable = 14
-  /// Unrecoverable data loss or corruption.
-  | DataLoss = 15
-  /// The request does not have valid authentication credentials for the operation.
-  | Unauthenticated = 16
+  | OK = 2
 
-type SpanStatus = SpanCanonicalCode * string option
+/// https://github.com/open-telemetry/oteps/blob/master/text/trace/0136-error_flagging.md#status-source
+[<RequireQualifiedAccess>]
+type SpanStatusSource =
+  | Instrumentation = 0
+  | User = 1
+
+type SpanStatus =
+    /// Currently, OpenTelemetry does not have a use case for differentiating between different types of errors. However, this use case may appear in the future. For now, we would like to reduce the number of status codes, and then add them back in as the need becomes clear. We would also like to differentiate between status codes which have not been set, and an explicit OK status set by an end user.
+  { code: SpanStatusCode
+    /// A new Status Source field identifies the origin of the status code on the span. This is important, as statuses set by application developers and operators have been confirmed by the end user to be correct to the particular situation. Statuses set by instrumentation, on the other hand, are only following a generic schema.
+    source: SpanStatusSource
+    description: string option }
+
+  static member create(code, ?description, ?source) =
+    { code=code; source=defaultArg source SpanStatusSource.Instrumentation; description=description }
 
 /// https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/trace/api.md
 /// | `SpanKind` | Synchronous | Asynchronous | Remote Incoming | Remote Outgoing |

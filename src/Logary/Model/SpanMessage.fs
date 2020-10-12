@@ -21,7 +21,7 @@ type SpanMessage(label: string,
                  links: IList<_>,
                  attrs: IReadOnlyDictionary<string, Value>,
                  events: IList<EventMessage>,
-                 status: SpanCanonicalCode * string option,
+                 status: SpanStatus option,
                  onFinish: unit -> unit,
                  ?messageId,
                  ?name,
@@ -61,9 +61,9 @@ type SpanMessage(label: string,
       let res = transform x
       res
 
-  let _setStatus (code, desc) =
+  let _setStatus (status: SpanStatus option) =
     lock _semaphore <| fun () ->
-    _status <- code, desc
+    _status <- status
 
   let _setLabel labelFactory =
     lock _semaphore <| fun () ->
@@ -78,10 +78,10 @@ type SpanMessage(label: string,
     _context <- _context.withFlags (setFlags _context.flags)
 
   new() =
-    SpanMessage("", id, 0L, SpanContext.Zero, SpanKind.Internal, ResizeArray<_>(), Map.empty, ResizeArray<_>(), (SpanCanonicalCode.OK, None), id)
+    SpanMessage("", id, 0L, SpanContext.Zero, SpanKind.Internal, ResizeArray<_>(), Map.empty, ResizeArray<_>(), None, id)
 
   new(context: SpanContext) =
-    SpanMessage("", id, 0L, context, SpanKind.Internal, ResizeArray<_>(), Map.empty, ResizeArray<_>(), (SpanCanonicalCode.OK, None), id)
+    SpanMessage("", id, 0L, context, SpanKind.Internal, ResizeArray<_>(), Map.empty, ResizeArray<_>(), None, id)
 
   new(m: Logary.SpanMessage) =
     let ctx = Dictionary<_,_>() in let fs = Dictionary<_,_>() in let gauges = Dictionary<_,_>() in let attrs = Dictionary<_,_>()
@@ -206,6 +206,8 @@ type SpanMessage(label: string,
   override x.cloneAndUpdate builder =
     x.writeCopy builder :> LogaryMessageBase
 
+  // TODO: get hash code for SpanMessage
+
   // equality
   override x.Equals o =
     let dictEq (d1: IReadOnlyDictionary<_,_>) (d2: IReadOnlyDictionary<_,_>) =
@@ -281,7 +283,7 @@ type SpanMessage(label: string,
     lineI "started" (xM.started.ToString())
     lineI "finished" (xM.finished.ToString())
     lineI "flags" (xM.flags.ToString())
-    lineI "status" (xM.status.ToString())
+    lineI "status" (xM.status |> Option.map (sprintf "%O") |> Option.defaultValue "-")
     lineI "# fields (aka. attrs)" (xM.fields.Count.ToString())
     lineI "# events" (xM.events.Count.ToString())
     lineI "# links" (xM.links.Count.ToString())
@@ -314,8 +316,10 @@ type SpanMessage(label: string,
   interface SpanOps with
     member x.addLink link = _addLink link
     member x.setAttribute(key: string, value: Value) = x.addAttr (key, value)
-    member x.setStatus (code: SpanCanonicalCode) = _setStatus (code, None)
-    member x.setStatus (code: SpanCanonicalCode, description: string) = _setStatus (code, Some description)
+    member x.unsetStatus () = _setStatus None
+    member x.setStatus (code: SpanStatusCode) = _setStatus (Some (SpanStatus.create code))
+    member x.setStatus (code: SpanStatusCode, description: string) = _setStatus (Some (SpanStatus.create(code, description)))
+    member x.setStatus (code: SpanStatusCode, description: string, source: SpanStatusSource) = _setStatus (Some (SpanStatus.create(code, description, source)))
     member x.setFlags flags = _setFlags flags
     member x.addEvent m = x.addEvent m
     member x.finish ts = _finish x (Some ts) :> _

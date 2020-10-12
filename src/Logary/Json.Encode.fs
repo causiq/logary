@@ -165,8 +165,8 @@ let gauge: JsonEncoder<Gauge> =
 let moduleInfo: JsonEncoder<ModuleInfo> =
   fun m ->
     E.propertyList [
-      if m.name.IsSome then "name", Json.String m.name.Value
-      if m.buildId.IsSome then "buildId", Json.String m.buildId.Value
+      if m.name.IsSome then "name", String m.name.Value
+      if m.buildId.IsSome then "buildId", String m.buildId.Value
     ]
 
 let stackFrameBuilder: ObjectBuilder<StackFrame> =
@@ -252,7 +252,7 @@ let spanLink: JsonEncoder<SpanLink> =
     fun (predecessor, attrs) ->
       E.required E.string "type" (sprintf "followsFrom%s" from)
       >> E.required predecessorE "predecessor" predecessor
-      >> E.required (E.readDictWith value) "attributes" attrs
+      >> E.required (E.readDictWith value) "attrs" attrs
 
   let fromTrace = inner traceId "Trace"
   let fromSpan = inner spanContext "Span"
@@ -273,20 +273,13 @@ let eventMessage: JsonEncoder<EventMessage> =
   E.jsonObjectWith eventMessageBuilder
 
 let spanStatus: JsonEncoder<SpanStatus> =
-  let spanCanonicalCode = int >> E.int
-
-  let inner (code, desc) =
+  let inner (s: SpanStatus) =
     E.required E.string "type" "spanStatus"
-    >> E.required spanCanonicalCode "code" code
-    >> E.optional E.string "description" desc
+    >> E.required (int >> E.int) "code" s.code
+    >> E.required (int >> E.int) "source" s.source
+    >> E.optional E.string "description" s.description
 
-  let objectEncoder = E.jsonObjectWith inner
-
-  function
-  | _, Some _ as value ->
-    objectEncoder value
-  | code, _ ->
-    spanCanonicalCode code
+  E.jsonObjectWith inner
 
 let spanMessageBuilder: ObjectBuilder<SpanMessage> =
   fun s ->
@@ -298,7 +291,7 @@ let spanMessageBuilder: ObjectBuilder<SpanMessage> =
     >> E.required E.int64 "finished" s.finished
     >> E.required (E.arrayWith spanLink) "links" (Array.ofSeq s.links)
     >> E.required (E.arrayWith eventMessage) "events" (Array.ofSeq s.events)
-    >> E.required spanStatus "status" s.status
+    >> E.optional spanStatus "status" s.status
     // "attrs" -> "fields", so we don't serialise these
     // >> E.required (E.readDictWith value) "attrs" s.attrs
 

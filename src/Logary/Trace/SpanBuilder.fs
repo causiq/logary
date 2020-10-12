@@ -17,7 +17,7 @@ type SpanBuilder(label: string) =
   let mutable _flags = SpanFlags.None
   let _links = ResizeArray<_>(2)
   let _attrs = Dictionary<string, Value>(5)
-  let mutable _status = SpanCanonicalCode.OK, None
+  let mutable _status = None
   let mutable _streaming = false
   let _events = ResizeArray<EventMessage>()
 
@@ -73,12 +73,19 @@ type SpanBuilder(label: string) =
     for KeyValue (k, v) in attrs do _attrs.Add(k, v)
     x
 
-  member x.setStatus (code: SpanCanonicalCode) =
-    _status <- (code, None)
+  member x.unsetStatus() =
+    _status <- None
     x
-  member x.setStatus (code: SpanCanonicalCode, description: string) =
-    _status <- (code, Some description)
+  member x.setStatus (code: SpanStatusCode) =
+    _status <- Some {code=code; source=SpanStatusSource.User; description=None}
     x
+  member x.setStatus (code: SpanStatusCode, description: string) =
+    _status <- Some {code=code; source=SpanStatusSource.User; description=Some description}
+    x
+  member x.setStatus (code: SpanStatusCode, description: string, source: SpanStatusSource) =
+    _status <- Some {code=code; source=source; description=Some description}
+    x
+
   member x.setFlags flags =
     _flags <- flags
     x

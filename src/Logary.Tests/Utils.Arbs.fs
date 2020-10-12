@@ -227,7 +227,7 @@ type Arbs =
       let finished = started + 1_340_000_000L // 1.34s
       let! flags = Arb.generate<SpanFlags>
       let! attrs = Arb.generate<Dictionary<string, Value>>
-      let! status = Arb.generate<SpanStatus>
+      let! status = Gen.oneof [ Gen.constant None; Arb.generate<SpanStatus> |> Gen.map Some ]
       let! kind = Arb.generate<SpanKind>
       let dto = Model.SpanMessage(context)
       dto.label <- label

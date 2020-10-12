@@ -104,7 +104,7 @@ type SpanMessage =
   /// Gets the attributes of the Span; this is the same as the fields of the LogaryMessage.
   abstract attrs: IReadOnlyDictionary<string, Value>
   /// Returns the Span's status, which is the canonical code and an optional description.
-  abstract status: SpanStatus
+  abstract status: SpanStatus option
 
 /// Lets you identify a user by associating two user identities together. Useful when you generate a random UserId when
 /// the user first visits the app/site and then want to correlate that UserId with a logged-in-UserId.

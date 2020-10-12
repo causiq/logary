@@ -52,7 +52,7 @@ module SpanLoggerEx =
   [<Extension; CompiledName "Finish">]
   let finish (x: SpanLogger, ctx: HttpContext, transform: (Model.SpanMessage -> unit) option) =
     if ctx.Response.StatusCode >= 500 then
-      x.setStatus(SpanCanonicalCode.InternalError)
+      x.setStatus(SpanStatusCode.Error)
       x.setAttribute("error", true)
     elif
       ctx.Response.StatusCode >= 400 then x.setAttribute("http.bad_request", true)
@@ -67,7 +67,7 @@ module SpanLoggerEx =
   [<Extension; CompiledName "FinishWithException">]
   let finishWithExn (x: SpanLogger, _: HttpContext, ex: exn) =
     x.setAttribute("http.status_code", 500)
-    x.setStatus(SpanCanonicalCode.InternalError, ex.ToString())
+    x.setStatus(SpanStatusCode.Error, ex.ToString())
     x.setAttribute("error", true)
     x.error("Unhandled exception", fun m -> m.addExn ex)
     x.finish()

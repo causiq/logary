@@ -81,10 +81,6 @@ type SpanMessage with
   /// Gets whether this Span has a `Debug` or `Sampled` `SpanFlags` flag. Downstream collectors may choose to down-sample,
   /// so setting the `Sampled` flag is no guarantee that the Span will be sampled.
   member x.isSampled = x.flags &&& SpanFlags.Sampled = SpanFlags.Sampled
-  /// Is false if this Status represents an error, otherwise true.
-  member x.isOK =
-    let s, _ = x.status
-    s = SpanCanonicalCode.OK
   /// Returns the SpanId of the parent of this SpanData.
   member x.parentSpanId = x.context.parentSpanId
   /// Returns the Resource associated with this SpanData. When None is returned the assumption is that Resource will be taken from the Logger that is used to record this SpanData.
@@ -208,7 +204,7 @@ type LogaryMessage with
       |> Option.bind (function Value.Str s -> Some s | _ -> None)
 
 
-type System.Exception with
+type Exception with
   member x.toErrorInfo(?oig: ObjectIDGenerator, ?seen: IDictionary<int64, ErrorInfo>): ErrorInfo =
     let seen = seen |> Option.defaultWith (fun () -> Dictionary<_,_>() :> _)
     let oig = oig |> Option.defaultWith ObjectIDGenerator

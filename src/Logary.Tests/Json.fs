@@ -214,9 +214,6 @@ let tests =
         res.kind
           |> Expect.equal "Internal SpanKind" SpanKind.Internal
 
-        res.status
-          |> Expect.equal "OK status" (SpanCanonicalCode.OK, None)
-
         res.events.Count
           |> Expect.equal "Has eight events" 8
 
@@ -247,7 +244,7 @@ let tests =
             ResizeArray<_>(),
             Map.empty,
             ResizeArray<_>(),
-            (SpanCanonicalCode.AlreadyExists, Some "Cannot do, resource already exists"),
+            Some (SpanStatus.create(SpanStatusCode.Error, "Cannot do, resource already exists", SpanStatusSource.User)),
             id,
             mId,
             PointName [| "Logary Analytics"; "Prod" |],
@@ -494,7 +491,7 @@ let tests =
 
       let testDTOPlus (i, o: OffsetDateTime) =
         testCase (sprintf "offset date time %s parses correctly" i) <| fun () ->
-          Json.String i
+          String i
             |> Json.Decode.offsetDateTime
             |> JsonResult.getOrThrow
             |> Expect.equal "Parses to the right date time offset" o

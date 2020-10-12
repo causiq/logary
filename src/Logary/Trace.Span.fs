@@ -15,10 +15,17 @@ type SpanOps =
   abstract addLink: link: SpanLink -> unit
   /// An API to set a single Attribute where the attribute properties are passed as arguments. This MAY be called SetAttribute. To avoid extra allocations some implementations may offer a separate API for each of the possible value types.
   abstract setAttribute: key: string * value: Value -> unit
+
+  /// Clears the span status
+  abstract unsetStatus: unit -> unit
+
   /// Sets the Span's status; anything other than OK will bump the level to Warn
-  abstract setStatus: status: SpanCanonicalCode -> unit
+  abstract setStatus: status: SpanStatusCode -> unit
   /// Sets the Span's status and a description; anything other than OK will bump the level to Warn
-  abstract setStatus: status: SpanCanonicalCode * description: string -> unit
+  abstract setStatus: status: SpanStatusCode * description: string -> unit
+  /// Sets the Span's status and a description; anything other than OK will bump the level to Warn. Also allows setting
+  /// WHO (infrastructure or user) is setting the span status.
+  abstract setStatus: status: SpanStatusCode * description: string * source: SpanStatusSource -> unit
 
   /// Writes the flags for this Span
   abstract setFlags: setFlagCallback: (SpanFlags -> SpanFlags) -> unit

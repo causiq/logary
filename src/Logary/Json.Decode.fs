@@ -88,20 +88,24 @@ let spanFlags: JsonDecoder<SpanFlags> =
 let spanKind: JsonDecoder<SpanKind> =
   SpanKind.ofInt <!> D.int
 
-let spanCode: JsonDecoder<SpanCanonicalCode> =
-  enum<SpanCanonicalCode> <!> D.int
+let spanCode: JsonDecoder<SpanStatusCode> =
+  enum<SpanStatusCode> <!> D.int
+
+let spanSource: JsonDecoder<SpanStatusSource> =
+  enum<SpanStatusSource> <!> D.int
 
 let spanStatus: JsonDecoder<SpanStatus> =
   let objectDecoder =
-        fun code desc -> code, desc
+        fun code source desc -> SpanStatus.create(code, ?source=source, ?description=desc)
     <!> D.required spanCode "code"
+    <*> D.optional spanSource "source"
     <*> D.optional D.string "description"
 
   let intDecoder =
-    spanCode |> Decoder.map (fun c -> c, None)
+    spanCode |> Decoder.map SpanStatus.create
 
   D.eitherNamed ("spanStatus int", intDecoder)
-                ("spanStatus {code,description}", D.jsonObjectWith objectDecoder)
+                ("spanStatus {code,source,description}", D.jsonObjectWith objectDecoder)
 
 let level: JsonDecoder<LogLevel> =
   D.either (LogLevel.ofString <!> D.string)
@@ -274,11 +278,11 @@ let spanLink: JsonDecoder<SpanLink> =
     | "followsFromTrace" ->
           fun pre attrs -> FollowsFromTrace (pre, attrs)
       <!> D.required traceId "predecessor"
-      <*> D.required (D.mapWith value) "attributes"
+      <*> D.required (D.mapWith value) "attrs"
     | "followsFromSpan" | _ ->
           fun pre attrs -> FollowsFromSpan (pre, attrs)
       <!> D.required spanContext "predecessor"
-      <*> D.required (D.mapWith value) "attributes"
+      <*> D.required (D.mapWith value) "attrs"
   D.jsonObject >=> (D.required D.string "type" |> Decoder.bind decode)
 
 
@@ -555,10 +559,10 @@ let foldSpan (getTimestamp: unit -> EpochNanoSeconds) (m: Model.SpanMessage) (ke
 
   | "status" ->
     spanStatus json
-      |> JsonResult.map (fun s -> m.status <- s; m)
+      |> JsonResult.map (fun s -> m.status <- Some s; m)
       |> JsonResult.tagOnFail (PropertyTag "status")
 
-  | other ->
+  | _ ->
     JsonResult.pass m
 
 

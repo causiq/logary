@@ -17,7 +17,7 @@ type internal SpanLoggerImpl(logger: Logger,
                              links: ResizeArray<_>,
                              attrs: Dictionary<_,_>,
                              events: ResizeArray<_>,
-                             status: SpanCanonicalCode * string option,
+                             status: SpanStatus option,
                              onFinish: unit -> unit,
                              streaming: bool) =
 
@@ -72,11 +72,13 @@ type internal SpanLoggerImpl(logger: Logger,
     member __.status = span.status
 
 
-  interface Logary.Trace.SpanOps with
+  interface SpanOps with
     member x.addLink link = span.addLink link
     member x.setAttribute (key: string, value: Value) = span.setAttribute(key, value)
-    member x.setStatus (code: SpanCanonicalCode) = span.setStatus code
-    member x.setStatus (code: SpanCanonicalCode, description: string) = span.setStatus(code, description)
+    member x.unsetStatus () = span.unsetStatus()
+    member x.setStatus (code: SpanStatusCode) = span.setStatus code
+    member x.setStatus (code: SpanStatusCode, description: string) = span.setStatus(code, description)
+    member x.setStatus (code: SpanStatusCode, description: string, source: SpanStatusSource) = span.setStatus(code, description, source)
     member x.setFlags flags = span.setFlags flags
     member x.addEvent m = span.addEvent m
     member x.finish (ts: EpochNanoSeconds) = x._finishAndLogMyself(fun m -> m.timestamp <- ts) :> _
