@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
 - serviceaccount.yaml
-- namespace.yaml
 
 commonLabels:
   app: logary
