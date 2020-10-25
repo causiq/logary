@@ -90,6 +90,19 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
 
     logary, logary.getLogger "Logary.Rutta.Startup"
 
+  if results.Contains Tls_Trust_Cert then
+    let trusted = results.GetResults Tls_Trust_Cert |> Set.ofList
+    ilogger.info (sprintf "trusting { %s }" (trusted |> String.concat ", "))
+    ServicePointManager.ServerCertificateValidationCallback <- fun sender cert chain error ->
+      let hash = cert.GetCertHashString()
+      let trustedViaHash = Set.contains hash trusted
+      let trustedViaStore = error = Security.SslPolicyErrors.None
+      if not trustedViaStore then
+        ilogger.debug (
+          if trustedViaHash then sprintf "cert hash=%s trusted via command-line argument" hash
+          else sprintf "cert hash=%s is not trusted" hash)
+      trustedViaHash || trustedViaStore
+
   if results.Contains Version || results.IsUsageRequested then
     printfn "%s" (parser.PrintUsage())
     0

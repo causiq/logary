@@ -3,8 +3,12 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
+  
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Serialisation.fs" />
+    <Compile Include="LazyDisposer.fs" />
+    <Compile Include="KafkaTargetExn.fs" />
     <Compile Include="Targets_Kafka.fs" />
     <None Include="paket.references" />
   </ItemGroup>

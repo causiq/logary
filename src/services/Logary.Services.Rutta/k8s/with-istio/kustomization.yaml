@@ -5,6 +5,7 @@ resources:
 # choose one of:
 #- ../as-daemonset
 #- ../as-deployment
+- namespace.yaml
 - virtualservice.yaml
 
 # you'll need to add `istio-system/ingress` to take in external traffic and use this folder

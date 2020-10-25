@@ -35,6 +35,9 @@ test_kustomize:
 	@echo "Testing Deployment with Scaling"
 	kustomize build k8s/as-deployment-with-scaling
 	@echo ""
+	@echo "Testing Deployment with Istio"
+	kustomize build k8s/with-istio
+	@echo ""
 	@echo "Tests pass!"
 
 deploy_as_daemonset:

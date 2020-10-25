@@ -5,14 +5,16 @@ open System.Collections.Generic
 open System.Text
 open System.Threading
 open Confluent.Kafka.Admin
-open System.Threading.Tasks
 open Confluent.Kafka
+open Confluent.SchemaRegistry
+open Confluent.SchemaRegistry.Serdes
 open Hopac                       // for control flow
 open Hopac.Infixes               // for control flow
 open Logary                      // for the DataModel
 open Logary.Internals            // for the TargetAPI
 open Logary.Configuration.Target // for the fluent config API
 open Logary.Model
+open Newtonsoft.Json.Schema
 
 type KafkaConf =
   /// Most often we agree – document your fields
@@ -22,8 +24,20 @@ type KafkaConf =
     partitions: uint16
     replicationFactor: uint16
     batchSize: uint16
+    /// Optional producer configuration file to load.
     prodConfFile: string option
+    /// Optional schema registry configuration. You can set its properties with dotnet.producer.X.Y as well as sasl.* and similarly available client configuration properties as can be found in the Confluent docs.
     prodConf: ProducerConfig
+    /// Optional schema registry configuration. You can set its properties with schema.registry.X.Y
+    schemaRegistryConf: SchemaRegistryConfig
+    /// A configuration value for the JsonSerializer; we'll use it to configure our own serialiser. You can set its properties with json.X.Y
+    jsonSerializerConf: JsonSerializerConfig
+    /// Disable usage of the Confluent Schema Registry. Requires explicit opt-out.
+    noJsonSchema: bool
+    /// Optional URL to load the JSON schemas from. Defaults to https://app.logary.tech/schemas/logary-message.schema.json
+    jsonSchemaUrl: string option
+    /// Optional JsonSchema value to use instead of `jsonSchemaUrl`.
+    jsonSchema: JSchema option
   }
 
   member x.asTopicSpec =
@@ -34,6 +48,13 @@ type KafkaConf =
       ReplicationFactor=int16 x.replicationFactor,
       Configs=conf
     )
+
+  member x.asSchemaStrategy =
+    match x.noJsonSchema, x.jsonSchema, x.jsonSchemaUrl with
+    | true, _, _ -> NoSchema
+    | _, Some schema, _ -> OfValue schema
+    | _, _, Some url -> OfURL url
+    | _ -> NoSchema
 
   interface IValueFormattable with
     member x.toKeyValues baseKey =
@@ -48,6 +69,15 @@ type KafkaConf =
           yield "prodConfFile", Value.Str x.prodConfFile.Value
         for KeyValue (k, v) in x.prodConf do
           yield sprintf "prodConf.%s" k, Value.Str v
+        for KeyValue (k, v) in x.schemaRegistryConf do
+          yield sprintf "schemaRegistryConf.%s" k, Value.Str v
+        for KeyValue (k, v) in x.jsonSerializerConf do
+          yield sprintf "jsonSerializerConf.%s" k, Value.Str v
+        yield "noJsonSchema", Value.Bool x.noJsonSchema
+        if x.jsonSchemaUrl.IsSome then
+          yield "jsonSchemaURL", Value.Str x.jsonSchemaUrl.Value
+        if x.jsonSchema.IsSome then
+          yield "jsonSchema", Value.Str (x.jsonSchema.Value.ToString())
       ]
       |> List.map (fun (k, v) -> sprintf "%s.%s" baseKey k, v)
       |> Map
@@ -56,12 +86,17 @@ type KafkaConf =
 
   interface TargetConfWriter<KafkaConf> with
     member x.write(key, value, hasOwnField) =
-      if not hasOwnField then
+      if hasOwnField then x else
+      if key.StartsWith "schema.registry" then
+        x.schemaRegistryConf.Set(key, value)
+        x
+      elif key.StartsWith "json" then
+        x.jsonSerializerConf.Set(key, value)
+        x
+      else
         let pc = ProducerConfig(x.prodConf)
         pc.Set(key, value)
         { x with prodConf = pc }
-      else
-        x
 
 
 let empty =
@@ -80,47 +115,15 @@ let empty =
         CompressionType=Nullable<_> CompressionType.Snappy,
         ClientId="logary",
         Acks = Nullable<_> Acks.All)
+    schemaRegistryConf =
+      SchemaRegistryConfig(
+        Url = "http://schema-registry:8081")
+    jsonSerializerConf =
+      JsonSerializerConfig()
+    noJsonSchema = false
+    jsonSchemaUrl = Some "https://app.logary.tech/schemas/logary-message.merged.schema.json"
+    jsonSchema = None
   }
-
-type KafkaTargetExn(message, error: Error) =
-  inherit Exception(message)
-  member x.error = error
-
-  static member ofError (e: Error) =
-    KafkaTargetExn(sprintf "Publish failed %s with code=%O" (if e.IsFatal then "fatally" else "non-fatally") e.Code,
-                   e)
-
-  static member toKeyValues (baseKey, error: Error) =
-    [ "error", Value.Bool true
-      "errorCode", Value.Str (error.Code.ToString())
-      "errorReason", Value.Str error.Reason
-      "isBrokerError", Value.Bool error.IsBrokerError
-      "isLocalError", Value.Bool error.IsLocalError ]
-    |> List.map (fun (k, v) -> sprintf "%s.%s" baseKey k, v)
-
-  static member toKeyValues (baseKey, report: DeliveryReport<Id, LogaryMessageBase>) =
-    KafkaTargetExn.toKeyValues(baseKey, report.Error)
-
-  static member toRODict (baseKey, error: Error) =
-    KafkaTargetExn.toKeyValues (baseKey, error)
-      |> Map
-      :> IReadOnlyDictionary<string, Value>
-
-  static member toRODict (baseKey, report: DeliveryReport<Id, LogaryMessageBase>) =
-    KafkaTargetExn.toKeyValues (baseKey, report)
-      |> Map
-      :> IReadOnlyDictionary<string, Value>
-
-  interface IValueFormattable with
-    member x.toKeyValues baseKey =
-      KafkaTargetExn.toRODict(baseKey, error)
-        |> Choice2Of2
-
-
-[<Struct>]
-type LazyDisposer<'a when 'a :> IDisposable>(dL: Lazy<'a>) =
-  interface IDisposable with
-    member x.Dispose() = if dL.IsValueCreated then dL.Value.Dispose()
 
 // When creating a new target this module gives the bare-bones
 // for the approach you may need to take.
@@ -129,31 +132,9 @@ module internal Impl =
 
   type Producer = IProducer<string, LogaryMessageBase>
 
-  let idSerializer: ISerializer<string> =
+  let keySerializer: ISerializer<string> =
     { new ISerializer<_> with
         member x.Serialize(data, context): byte[] = Encoding.UTF8.GetBytes data
-    }
-
-  // TODO: integrate with schema registry:
-  // https://github.com/confluentinc/confluent-kafka-dotnet/tree/master/examples/AvroBlogExamples
-  // see https://github.com/confluentinc/confluent-kafka-dotnet/blob/master/examples/JsonSerialization/Program.cs#L141
-  let serialise message =
-    Json.Encode.logaryMessageBase message
-      |> Json.formatWith JsonFormattingOptions.Compact
-      |> Encoding.UTF8.GetBytes
-
-  let valueSerializer: ISerializer<LogaryMessageBase> =
-    { new ISerializer<LogaryMessageBase> with
-        member x.Serialize(message,context): byte[] =
-          serialise message
-    }
-
-  // TO CONSIDER: how do we handle this?
-  let asyncValueSerializer: IAsyncSerializer<LogaryMessageBase> =
-    { new IAsyncSerializer<LogaryMessageBase> with
-        member x.SerializeAsync(message, context): Task<byte[]> =
-          serialise message
-            |> Task.FromResult
     }
 
   type SyslogLevel with
@@ -167,13 +148,14 @@ module internal Impl =
       | _ -> Verbose
 
   type State =
-    { producer: Producer }
-
-    static member create p = { producer=p }
+    { producer: Producer
+      srClient: ISchemaRegistryClient }
+    static member create (p, srClient) = { producer=p; srClient=srClient }
 
     interface IDisposable with
       member x.Dispose() =
         x.producer.Dispose()
+        x.srClient.Dispose()
 
   let handleStats (api: TargetAPI) =
     fun (p: Producer) (json: string) ->
@@ -240,38 +222,33 @@ module internal Impl =
       api.runtime.logger.error(e.Message, setDetails)
       if error.IsFatal then queue (Ch.give fatalCh (p, e))
 
-    /// Also ACKs.
-    let handleReport (ack: IVar<unit>) =
-      fun (report: DeliveryReport<string, LogaryMessageBase>) ->
-        let fillJ =
-          if report.Error.IsFatal then
-            // TO CONSIDER: can callers of logWithAck handle failing (with exception) ACKs, or should
-            // I do it via "fatalCh" instead?
-            //let ex = KafkaTargetExn.ofError report.Error
-            //IVar.fillFailure ack ex
-            IVar.fill ack ()
-          else
-            IVar.fill ack ()
-
-        queue (Ch.send deliveriesCh report >>=. fillJ)
-
     let rec initialise () =
       api.runtime.logger.debug("Starting Kafka target", fun m -> m.setField("config", conf))
       maybeCreateTopic conf api
       >>= startProducer
 
     and startProducer () =
-      let b = ProducerBuilder<string, LogaryMessageBase>(conf.prodConf)
-      let p =
-        b.SetErrorHandler(Action<_,_> handleError)
-          .SetKeySerializer(idSerializer)
+      let builder = ProducerBuilder<string, LogaryMessageBase>(conf.prodConf)
+      let registry = new CachedSchemaRegistryClient(conf.schemaRegistryConf)
+      let serialiser =
+        Serialiser(
+          api.runtime.logger,
+          registry,
+          Json.Encode.logaryMessageBase,
+          conf.jsonSerializerConf,
+          conf.asSchemaStrategy)
+      let producer =
+        builder.SetErrorHandler(Action<_,_> handleError)
+          .SetKeySerializer(keySerializer)
           .SetLogHandler(Action<_,_> (handleLogs api))
           .SetStatisticsHandler(Action<_,_> (handleStats api))
-          .SetValueSerializer(valueSerializer) // can we integrate with serde/schema registry
+          .SetValueSerializer(serialiser) // can we integrate with serde/schema registry
           .Build()
 
       api.runtime.logger.debug("Starting Kafka target's producer", fun m -> m.setField("config", conf))
-      Job.using p (State.create >> loop)
+
+      let state = State.create (producer, registry)
+      Job.using state loop
 
     and loop (state: State) =
       Alt.choose [
@@ -291,42 +268,45 @@ module internal Impl =
 
         RingBuffer.takeBatch conf.batchSize api.requests ^=> fun messages ->
           let cts = lazy (new CancellationTokenSource())
-          let acks = ResizeArray<_>(messages.Length)
+          //let acks = ResizeArray<_>(messages.Length)
           let flushes = ResizeArray<_>(max (messages.Length / 10) 10)
 
-          for tm in messages do
-            match tm with
-            | Log (m, ack) ->
-              // handleReport fills the ack IVar
-              let mDTO =
-                Message<_, _>(
-                  Key=m.id.toBase64String(),
-                  Value=m,
-                  Timestamp=Timestamp(m.timestamp / 1_000_000L, TimestampType.CreateTime)
-              )
-              state.producer.Produce(conf.topicName, mDTO, handleReport ack)
-              acks.Add ack
+          let iterJ = job {
+            for tm in messages do
+              match tm with
+              | Log (m, ack) ->
+                // handleReport fills the ack IVar
+                let mDTO =
+                  Message<_, _>(
+                    Key=m.id.toBase64String(),
+                    Value=m,
+                    Timestamp=Timestamp(m.timestamp / 1_000_000L, TimestampType.CreateTime)
+                )
+                let! _ = state.producer.ProduceAsync(conf.topicName, mDTO)
+                do! ack *<= ()
 
-            | Flush (ack, nack) ->
-              start (nack |> Alt.afterFun cts.Value.Cancel)
+              | Flush (ack, nack) ->
+                start (nack |> Alt.afterFun cts.Value.Cancel)
 
-              let handleFlush = function
-                | Ok () ->
-                  IVar.fill ack ()
-                | Result.Error e ->
-                  IVar.fillFailure ack e
+                let handleFlush = function
+                  | Ok () ->
+                    IVar.fill ack ()
+                  | Result.Error e ->
+                    IVar.fillFailure ack e
 
-              let fJ =
-                Hopac.Job.Scheduler.isolate (fun () ->
-                  try
-                    Ok (state.producer.Flush(cts.Value.Token))
-                  with e ->
-                    Result.Error e)
-                >>= handleFlush
+                let fJ =
+                  Hopac.Job.Scheduler.isolate (fun () ->
+                    try
+                      Ok (state.producer.Flush(cts.Value.Token))
+                    with e ->
+                      Result.Error e)
+                  >>= handleFlush
 
-              flushes.Add fJ
+                flushes.Add fJ
+          }
 
-          Job.using (new LazyDisposer<_>(cts)) (fun _ -> Job.conIgnore flushes)
+          iterJ
+          >>=. Job.using (new LazyDisposer<_>(cts)) (fun _ -> Job.conIgnore flushes)
           >>= fun () -> loop state
 
       ] :> Job<_>

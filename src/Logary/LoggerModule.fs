@@ -115,6 +115,7 @@ module LoggerEx =
 
     [<CompiledName "Verbose">]
     member x.verbose(message, ?builder) =
+      if x.level > Verbose then () else
       let m = (Model.Event(message, None, level=Verbose))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
@@ -126,12 +127,14 @@ module LoggerEx =
 
     [<CompiledName "Debug">]
     member x.debug(message, ?builder) =
+      if x.level > Debug then () else
       let m = (Model.Event(message, None, level=Debug))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Info">]
     member x.info(message, ?builder) =
+      if x.level > Info then () else
       let m = (Model.Event(message, None, level=Info))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
@@ -140,18 +143,21 @@ module LoggerEx =
 
     [<CompiledName "Warn">]
     member x.warn(message, ?builder): unit =
+      if x.level > Warn then () else
       let m = (Model.Event(message, None, level=Warn))
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Warn">]
     member x.warn(message: string, e: exn, ?builder): unit =
+      if x.level > Warn then () else
       let m = Model.Event(message, None, level=Warn, error=e.toErrorInfo())
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "WarnBP">]
     member x.warnBP(message, ?builder): Alt<bool> =
+      if x.level > Warn then Alt.once false else
       let m = (Model.Event(message, None, level=Warn))
       builder |> Option.iter (fun f -> f m)
       Logger.logBP x m
@@ -162,6 +168,7 @@ module LoggerEx =
 
     [<CompiledName "WarnAck">]
     member x.warnAck(message, ?builder): Promise<bool> =
+      if x.level > Warn then Promise false else
       let m = (Model.Event(message, None, level=Warn))
       builder |> Option.iter (fun f -> f m)
       Logger.logAck x m
@@ -173,18 +180,21 @@ module LoggerEx =
 
     [<CompiledName "Error">]
     member x.error(message, ?builder): unit =
+      if x.level > Error then () else
       let m = Model.Event(message, None, level=Error)
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "Error">]
     member x.error(message: string, e: exn, ?builder): unit =
+      if x.level > Error then () else
       let m = Model.Event(message, None, level=Error, error=e.toErrorInfo())
       builder |> Option.iter (fun f -> f m)
       Logger.log x m
 
     [<CompiledName "ErrorBP">]
     member x.errorBP(message, ?builder): Alt<bool> =
+      if x.level > Error then Alt.once false else
       let m = Model.Event(message, None, level=Error)
       builder |> Option.iter (fun f -> f m)
       Logger.logBP x m
@@ -195,6 +205,7 @@ module LoggerEx =
 
     [<CompiledName "ErrorAck">]
     member x.errorAck(message, ?builder): Promise<bool> =
+      if x.level > Error then Promise false else
       let m = Model.Event(message, None, level=Error)
       builder |> Option.iter (fun f -> f m)
       Logger.logAck x m

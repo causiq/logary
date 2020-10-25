@@ -519,6 +519,7 @@ let tests =
       // load schema
       let resolver = JSchemaUrlResolver()
       let schema = JSchema.Parse("""{"$ref": "https://app.logary.tech/schemas/logary-message.schema.json"}""", resolver)
+      let schemaMerged = JSchema.Parse("""{"$ref": "https://app.logary.tech/schemas/logary-message.merged.schema.json"}""", resolver)
 
       let jsonEncodingMatchesSchema (m: LogaryMessageBase) =
         let jsonStr = E.logaryMessageBase m |> Json.formatWith JsonFormattingOptions.Compact
@@ -526,12 +527,18 @@ let tests =
 
         // validate json
         let mutable errors = ResizeArray<ValidationError>() :> System.Collections.Generic.IList<_>
-        if not (jToken.IsValid(schema, &errors)) then
-          let errors = errors |> Seq.map printErrors |> String.concat "\n\n"
-          logger.info (eventX "Failed validation with errors:\n{errors}" >> setField "errors" errors)
-          false
-        else
-          true
+        let mutable ok = true
+        for schema in [ schema; schemaMerged ] do
+          if not (jToken.IsValid(schema, &errors)) then
+            let errors = errors |> Seq.map printErrors |> String.concat "\n\n"
+            logger.info (
+              eventX "Failed {schema} validation with errors:\n{errors}"
+              >> setField "errors" errors
+              >> setField "schema" schema)
+            ok <- false
+          else
+            ok <- ok && true
+        ok
 
       yield testPropertyWithConfig fsc "any LogaryMessage" jsonEncodingMatchesSchema
 //      yield etestPropertyWithConfig (471357911, 296803816) fsc "GaugeMessage crashes Chiron" jsonEncodingMatchesSchema

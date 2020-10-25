@@ -4,3 +4,4 @@ NodaTime
 Confluent.Kafka
 Confluent.SchemaRegistry.Serdes.Protobuf
 Confluent.SchemaRegistry.Serdes.Json
+Newtonsoft.Json.Schema
