@@ -38,6 +38,8 @@ type KafkaConf =
     jsonSchemaUrl: string option
     /// Optional JsonSchema value to use instead of `jsonSchemaUrl`.
     jsonSchema: JSchema option
+    /// Whether to only publish to a single topic. Otherwise publishes each type of message to a separate topic.
+    singleTopic: bool
   }
 
   member x.asTopicSpec =
@@ -78,6 +80,7 @@ type KafkaConf =
           yield "jsonSchemaURL", Value.Str x.jsonSchemaUrl.Value
         if x.jsonSchema.IsSome then
           yield "jsonSchema", Value.Str (x.jsonSchema.Value.ToString())
+        yield "singleTopic", Value.Bool x.singleTopic
       ]
       |> List.map (fun (k, v) -> sprintf "%s.%s" baseKey k, v)
       |> Map
@@ -123,6 +126,7 @@ let empty =
     noJsonSchema = false
     jsonSchemaUrl = Some "https://app.logary.tech/schemas/logary-message.merged.schema.json"
     jsonSchema = None
+    singleTopic = false
   }
 
 // When creating a new target this module gives the bare-bones
@@ -281,8 +285,9 @@ module internal Impl =
                     Key=m.id.toBase64String(),
                     Value=m,
                     Timestamp=Timestamp(m.timestamp / 1_000_000L, TimestampType.CreateTime)
-                )
-                let! _ = state.producer.ProduceAsync(conf.topicName, mDTO)
+                  )
+                let messageTopic = if conf.singleTopic then conf.topicName else sprintf "%s_%O" conf.topicName m.kind
+                let! _ = state.producer.ProduceAsync(messageTopic, mDTO)
                 do! ack *<= ()
 
               | Flush (ack, nack) ->
