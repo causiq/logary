@@ -20,6 +20,8 @@ type KafkaConf =
   /// Most often we agree – document your fields
   { tryCreate: bool
     topicName: string
+    /// Whether to only publish to a single topic. Otherwise publishes each type of message to a separate topic.
+    singleTopic: bool
     topicConf: IReadOnlyDictionary<string, string>
     partitions: uint16
     replicationFactor: uint16
@@ -38,18 +40,31 @@ type KafkaConf =
     jsonSchemaUrl: string option
     /// Optional JsonSchema value to use instead of `jsonSchemaUrl`.
     jsonSchema: JSchema option
-    /// Whether to only publish to a single topic. Otherwise publishes each type of message to a separate topic.
-    singleTopic: bool
   }
 
-  member x.asTopicSpec =
+  member x.asTopicSpec: TopicSpecification list =
     let conf = Dictionary<string, string>(x.topicConf)
-    TopicSpecification(
-      Name=x.topicName,
-      NumPartitions=int x.partitions,
-      ReplicationFactor=int16 x.replicationFactor,
-      Configs=conf
-    )
+    let topic name =
+      TopicSpecification(
+        Name=name,
+        NumPartitions=int x.partitions,
+        ReplicationFactor=int16 x.replicationFactor,
+        Configs=conf
+      )
+    if x.singleTopic then
+      [ topic x.topicName ]
+    else
+      [ MessageKind.Event
+        MessageKind.Gauge
+        MessageKind.Histogram
+        MessageKind.ForgetUser
+        MessageKind.IdentifyUser
+        MessageKind.SetUserProperty
+      ]
+      |> List.map (fun k -> k.ToString().ToLowerInvariant())
+      |> List.map (sprintf "%s_%s" (x.topicName.ToLowerInvariant()))
+      |> List.map topic
+
 
   member x.asSchemaStrategy =
     match x.noJsonSchema, x.jsonSchema, x.jsonSchemaUrl with
@@ -62,6 +77,7 @@ type KafkaConf =
     member x.toKeyValues baseKey =
       [ yield "tryCreate", Value.Bool x.tryCreate
         yield "topicName", Value.Str x.topicName
+        yield "singleTopic", Value.Bool x.singleTopic
         for KeyValue (k, v) in x.topicConf do
           yield sprintf "topicConf.%s" k, Value.Str v
         yield "partitions", Value.Int64 (int64 x.partitions)
@@ -80,7 +96,6 @@ type KafkaConf =
           yield "jsonSchemaURL", Value.Str x.jsonSchemaUrl.Value
         if x.jsonSchema.IsSome then
           yield "jsonSchema", Value.Str (x.jsonSchema.Value.ToString())
-        yield "singleTopic", Value.Bool x.singleTopic
       ]
       |> List.map (fun (k, v) -> sprintf "%s.%s" baseKey k, v)
       |> Map
@@ -106,7 +121,7 @@ let empty =
   { tryCreate = true
     topicName = "logary"
     topicConf = Map.empty
-    partitions = 10us
+    partitions = 3us
     replicationFactor = 2us
     batchSize = 100us
     prodConfFile = None
@@ -174,14 +189,14 @@ module internal Impl =
       e.name <- logMessage.Facility |> PointName.parse
       api.runtime.logger.log(e)
 
-  let logCreateTopicExn (topicName: string, api: TargetAPI) (e: CreateTopicsException) =
+  let logCreateTopicExn (topicNames: string, api: TargetAPI) (e: CreateTopicsException) =
     try
       if e.Results.[0].Error.Code <> ErrorCode.TopicAlreadyExists then
-        api.runtime.logger.error("An error occured creating topic={topic}: {reason}", fun m ->
-          m.setField("topic", topicName)
+        api.runtime.logger.error("An error occured creating topics={topics}: {reason}", fun m ->
+          m.setField("topics", topicNames)
           m.setField("reason", e.Results.[0].Error.Reason))
       else
-        api.runtime.logger.info (sprintf "Topic '%s' already exists, continuing..." topicName)
+        api.runtime.logger.info (sprintf "Topics '%s' already exists, continuing..." topicNames)
     with e ->
       eprintfn "%O" e // exception from exception handler :(
 
@@ -194,17 +209,19 @@ module internal Impl =
         do api.runtime.logger.debug (sprintf "Maybe creating topic '%s'" conf.topicName, fun m -> m.setField("conf", conf))
         use c = AdminClientBuilder(conf.prodConf).Build()
         do api.runtime.logger.debug "Built AdminClient"
+        let topics = conf.asTopicSpec
+        let topicNames = topics |> List.map (fun t -> t.Name) |> String.concat ", "
         try
           let fourSeconds = TimeSpan.FromSeconds 4. |> Nullable<_>
+          do api.runtime.logger.debug("Calling CreateTopicsAsync create for topics={topics}", fun m -> m.setField("topics", topicNames))
           let o = CreateTopicsOptions(OperationTimeout=fourSeconds, RequestTimeout=fourSeconds)
-          do api.runtime.logger.debug (sprintf "Calling CreateTopicsAsync create for topic '%s'" conf.topicName)
-          do! Job.fromUnitTask (fun () -> c.CreateTopicsAsync(conf.asTopicSpec :: [], o))
+          do! Job.fromUnitTask (fun () -> c.CreateTopicsAsync(topics, o))
         with
         | :? CreateTopicsException as e ->
-          logCreateTopicExn (conf.topicName, api) e
+          logCreateTopicExn (topicNames, api) e
         | :? AggregateException as ae ->
           if ae.InnerException :? CreateTopicsException then
-            logCreateTopicExn (conf.topicName, api) (ae.InnerException :?> CreateTopicsException)
+            logCreateTopicExn (topicNames, api) (ae.InnerException :?> CreateTopicsException)
             return ()
           else
             api.runtime.logger.error ("Crashed with AggregateException", fun m -> m.addExn ae)
