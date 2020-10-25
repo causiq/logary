@@ -161,10 +161,10 @@ type Serialiser<'T>(ilogger: Logger,
       then registry.ConstructKeySubjectName(context.Topic, schema.Title)
       else registry.ConstructValueSubjectName(context.Topic, schema.Title)
 
-  let registerSchema (schemaStr: string, schema: JSchema) context =
+  let registerSchema (jsonStr: string, schema: JSchema) context =
     ilogger.verbose (sprintf "Validating schema: %s" schema.Title)
 
-    do validate schemaStr schema
+    do validate jsonStr schema
 
     let subject = getSubjectName context schema
 
@@ -173,7 +173,7 @@ type Serialiser<'T>(ilogger: Logger,
       Job.unit ()
     else
       Lock.duringJob registerSchemaLock <| job {
-        let s = Schema(schemaStr, EmptyReferencesList, SchemaType.Json)
+        let s = Schema(schema.ToString(), EmptyReferencesList, SchemaType.Json)
 
         // first usage: register/get schema to check compatibility
         if autoRegisterSchemas then
