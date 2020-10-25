@@ -182,7 +182,8 @@ type Serialiser<'T>(ilogger: Logger,
             let! res = Job.fromTask (fun () -> registry.RegisterSchemaAsync(subject, s))
             schemaId := Some res
           with e ->
-            eprintfn "%O" e
+            // the schema is at least valid
+            ilogger.warn ("Failed to register schema={title}.", e, fun m -> m.setField("title", schema.Title))
             e.reraise()
 
         else
