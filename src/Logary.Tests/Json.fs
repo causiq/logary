@@ -174,6 +174,13 @@ let tests =
         res.flags
           |> Expect.equal "Has trace flags" SpanFlags.Sampled
 
+      testCase "decode monetaryValue SEK" <| fun () ->
+        """{"amount":1195,"currency":"SEK"}"""
+          |> Json.parse
+          |> JsonResult.bind D.money
+          |> JsonResult.getOrThrow
+          |> Expect.equal "Parses to 1195,00 kr" (money Currency.SEK 1195.)
+
       testCase "decode Logary JS event message" <| fun () ->
         let res =
           Json.parse """[{"event":"Foobar purchased","monetaryValue":{"amount":20,"currency":"EUR"},"error":null,"level":3,"timestamp":"1598451184415000000","fields":{},"context":{},"name":["with-nextjs","IndexPage"],"type":"event","templated":{"message":"Foobar purchased","consumed":[],"remaining":[]},"id":"cvTF3jralDI9861r1uR7Sg=="},{"event":"User clicked \"{cssSelector}\"","monetaryValue":null,"error":null,"level":3,"timestamp":"1598451184417000000","fields":{"cssSelector":"html body div#__next div#layout button#purchase.primary"},"context":{},"name":["with-nextjs","plugins","browser","onClick"],"type":"event","templated":{"message":"User clicked \"html body div#__next div#layout button#purchase.primary\"","consumed":[{"key":"cssSelector","value":"html body div#__next div#layout button#purchase.primary"}],"remaining":[]},"id":"cvTF3jralDI9861r1uR7Sg=="}]"""

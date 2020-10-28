@@ -407,8 +407,11 @@ with
     let (Gauge (v, u)) = x
     let gv, gu = U.scale u v.asFloat
     match u with
-    | U.Currency _ -> sprintf "%s %.2f" gu gv
-    | _ -> sprintf "%.2f %s" gv gu
+    | U.Currency c ->
+      let c = c :> IFormattable
+      sprintf "%s %.2f" (c.ToString("G", Culture.invariant)) v.asFloat
+    | _ ->
+      sprintf "%.2f %s" gv gu
 
   static member ofNanos (ns: Value) =
     Gauge (ns, U.Scaled (U.Seconds, float Constants.NanosPerSecond))
