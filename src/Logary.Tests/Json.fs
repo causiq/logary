@@ -128,6 +128,20 @@ let tests =
       testRoundtrip None (E.units, D.units)
       testPropertyWithConfig fsc "can generate Model.Event" <| fun (e: Model.Event) -> ignore e
 
+      testCase "uppercase currency out" <| fun () ->
+        Currency.EUR |> E.currency |> Json.format |> Expect.equal "Has uppercase EUR" "\"EUR\""
+        Currency.USD |> E.currency |> Json.format |> Expect.equal "Has uppercase USD" "\"USD\""
+        Currency.Other "XYZ" |> E.currency |> Json.format |> Expect.equal "Has uppercase XYZ" "\"XYZ\""
+
+      testCase "lowercase currency in -> uppercase out" <| fun () ->
+        """{"type":"money","amount": 1,"currency":"usd"}"""
+          |> Json.parse
+          |> JsonResult.bind D.money
+          |> JsonResult.getOrThrow
+          |> E.money
+          |> Json.format
+          |> Expect.equal "Formats properly" """{"type":"money","amount":1,"currency":"USD"}"""
+
       testDecode None (D.eventMessage MonotonicClock.getTimestamp) (fun () ->
         Json.parse """{"type":"event","event":"Hello world"}""" |> JsonResult.getOrThrow)
 

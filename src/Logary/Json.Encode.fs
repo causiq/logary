@@ -160,7 +160,8 @@ let rec units: JsonEncoder<U> =
 
 let moneyPlainWriter: ObjectBuilder<float * Currency> =
   fun (amount: float, c) ->
-    EI.required "amount" amount
+    EI.required "type" "money"
+    >> EI.required "amount" amount
     >> E.required currency "currency" c
 
 let money: JsonEncoder<Money> =
