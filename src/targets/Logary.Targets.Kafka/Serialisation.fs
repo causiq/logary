@@ -76,6 +76,8 @@ type SchemaStrategy =
 ///     Note: Off-the-shelf libraries do not yet exist to enable
 ///     integration of System.Text.Json and JSON Schema, so this
 ///     is not yet supported by the serializer.
+///
+///     TODO: support test env https://github.com/confluentinc/confluent-kafka-dotnet/issues/1437
 /// </remarks>
 type Serialiser<'T>(ilogger: Logger,
                     registry: ISchemaRegistryClient,

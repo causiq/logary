@@ -148,8 +148,8 @@ let currency: JsonDecoder<Currency> =
   let upper (s: string) = s.ToUpperInvariant()
   let inner =
     upper >> function
-      | "usd" -> Currency.USD
-      | "eur" -> Currency.EUR
+      | "USD" -> Currency.USD
+      | "EUR" -> Currency.EUR
       | other -> Currency.Other other
   inner <!> D.string
 

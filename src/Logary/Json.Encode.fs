@@ -76,9 +76,9 @@ let value: JsonEncoder<Value> =
 
 let currency: JsonEncoder<Currency> =
   function
-  | Currency.USD -> E.string "usd"
-  | Currency.EUR -> E.string "eur"
-  | Currency.Other other -> E.string other
+  | Currency.USD -> E.string "USD"
+  | Currency.EUR -> E.string "EUR"
+  | Currency.Other other -> E.string (other.ToUpperInvariant())
 
 let rec units: JsonEncoder<U> =
   function
