@@ -529,25 +529,28 @@ let tests =
       let schemaMerged = JSchema.Parse("""{"$ref": "https://app.logary.tech/schemas/logary-message.merged.schema.json"}""", resolver)
 
       let jsonEncodingMatchesSchema (m: LogaryMessageBase) =
-        let jsonStr = E.logaryMessageBase m |> Json.formatWith JsonFormattingOptions.Compact
+        let jsonStr = E.logaryMessageBase m |> Json.formatWith JsonFormattingOptions.Pretty
         let jToken = JToken.Parse(jsonStr)
 
         // validate json
         let mutable errors = ResizeArray<ValidationError>() :> System.Collections.Generic.IList<_>
         let mutable ok = true
-        for schema in [ schema; schemaMerged ] do
+        for schema, isMerged in [ schema, false; schemaMerged, true ] do
           if not (jToken.IsValid(schema, &errors)) then
             let errors = errors |> Seq.map printErrors |> String.concat "\n\n"
             logger.info (
-              eventX "Failed {schema} validation with errors:\n{errors}"
+              eventX "Failed {mergedOrNot} schema:\n{schema} validation with errors:\n{errors}\nJSON:\n  {json}"
+              >> setField "mergedOrNot" (if isMerged then "merged" else "normalised")
               >> setField "errors" errors
-              >> setField "schema" schema)
+              >> setField "schema" schema
+              >> setField "json" jsonStr)
             ok <- false
           else
             ok <- ok && true
         ok
 
       yield testPropertyWithConfig fsc "any LogaryMessage" jsonEncodingMatchesSchema
+//      yield etestPropertyWithConfig (39313555, 296810949) fsc "JSON is valid against more than one schema from 'oneOf'"  jsonEncodingMatchesSchema
 //      yield etestPropertyWithConfig (471357911, 296803816) fsc "GaugeMessage crashes Chiron" jsonEncodingMatchesSchema
     ]
 

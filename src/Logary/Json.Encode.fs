@@ -111,7 +111,10 @@ let rec units: JsonEncoder<U> =
   | U.Grams ->
     E.string "grams"
   | U.Currency c ->
-    currency c
+    let inner c =
+      E.required E.string "type" "currency"
+      >> E.required currency "currency" c
+    E.jsonObjectWith inner c
   | U.Other u ->
     E.string u
   | U.Scaled (u, v) ->
@@ -155,11 +158,30 @@ let rec units: JsonEncoder<U> =
       >> E.required units "base" baseU
     E.jsonObjectWith inner baseU
 
+let moneyPlainWriter: ObjectBuilder<float * Currency> =
+  fun (amount: float, c) ->
+    EI.required "amount" amount
+    >> E.required currency "currency" c
+
+let money: JsonEncoder<Money> =
+  let inner (Gauge (v, u)) =
+    match u with
+    | U.Currency c ->
+      moneyPlainWriter (v.asFloat, c)
+    | o ->
+      failwithf "Unexpected unit for Money: %O" o
+  E.jsonObjectWith inner
+
 let gauge: JsonEncoder<Gauge> =
   let inner (Gauge (v, u)) =
-    EI.required "type" "gauge"
-    >> E.required value "value" v
-    >> E.required units "unit" u
+    match u with
+    | U.Currency c ->
+      EI.required "type" "money"
+      >> moneyPlainWriter (v.asFloat, c)
+    | _ ->
+      EI.required "type" "gauge"
+      >> E.required value "value" v
+      >> E.required units "unit" u
   E.jsonObjectWith inner
 
 let moduleInfo: JsonEncoder<ModuleInfo> =

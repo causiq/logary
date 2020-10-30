@@ -31,6 +31,7 @@ let kind: JsonDecoder<MessageKind> =
     | "setuserproperty" -> MessageKind.SetUserProperty
     | "identifyuser" -> MessageKind.IdentifyUser
     | "event" | _ -> MessageKind.Event
+
   inner <!> D.string
 
 let resource: JsonDecoder<Model.Resource> =
@@ -128,7 +129,7 @@ let value: JsonDecoder<Value> =
     | "bool" ->
       Value.Bool <!> D.required D.bool "value"
     | other ->
-      JsonResult.messageTypeUnknown other |> Decoder.always
+      JsonResult.discriminatorUnknown other |> Decoder.always
 
   let objectDecoder = D.jsonObject >=> (DI.required "type" |> Decoder.bind decodeObject)
   let floatDecoder = Value.Float <!> D.float
@@ -190,7 +191,8 @@ let rec units: JsonDecoder<U> =
   let inner: string -> ObjectReader<U> =
     String.toLowerInvariant >> function
     | "currency" ->
-      U.Currency <!> D.required currency "code"
+      U.Currency <!> D.required currency "currency"
+
     | "other" ->
       U.Other <!> D.required D.string "unit"
     | "scaled" ->
@@ -218,7 +220,7 @@ let rec units: JsonDecoder<U> =
     | "log10" ->
       U.Log10 <!> D.required units "base"
     | other ->
-      JsonResult.messageTypeUnknown other |> Decoder.always
+      JsonResult.discriminatorUnknown other |> Decoder.always
 
   let stringD =
     stringDecoder <!> D.string
@@ -229,21 +231,27 @@ let rec units: JsonDecoder<U> =
   D.eitherNamed ("unit string", stringD)
                 ("unit object", objD)
 
+
+let moneyPlain: ObjectReader<Money> =
+        fun (a: float) c -> Gauge (Value.Float a, U.Currency c)
+    <!> D.required D.float "amount"
+    <*> D.required currency "currency"
+
 let gauge: JsonDecoder<Gauge> =
-  let inner (_: string) =
-        fun v u -> Gauge (v, u)
-    <!> D.required value "value"
-    <*> D.required units "unit"
+  let inner = function
+    | "money" ->
+      moneyPlain
+    | "gauge" ->
+          fun v u -> Gauge (v, u)
+      <!> D.required value "value"
+      <*> D.required units "unit"
+    | unknownType ->
+      Decoder.alwaysFail (SingleFailure (DiscriminatorUnknown unknownType))
+
   D.jsonObject >=> (DI.required "type" |> Decoder.bind inner)
 
 let money: JsonDecoder<Money> =
-  let case1 =
-    let inner =
-          fun (a: float) c -> Gauge (Value.Float a, U.Currency c)
-      <!> D.required D.float "amount"
-      <*> D.required currency "currency"
-    D.jsonObject >=> inner
-
+  let case1 = D.jsonObjectWith moneyPlain
   D.eitherNamed ("money {amount,currency} simple object", case1)
                 ("money {type,value,unit} Gauge object", gauge)
 
@@ -634,7 +642,7 @@ let logaryMessageReader: ObjectReader<Model.LogaryMessageBase> =
       | MessageKind.SetUserProperty -> setUserPropertyMessageReader >> toBase
       | MessageKind.ForgetUser      -> forgetUserMessageReader >> toBase
       | MessageKind.Control         ->
-        fun _ _ -> JsonResult.messageTypeUnknown "ControlMessage are not accepted for deserialisation"
+        fun _ _ -> JsonResult.discriminatorUnknown "control"
 
     Global.getTimestampD |> DVar.mapFun reader
 

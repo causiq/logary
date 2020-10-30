@@ -24,9 +24,14 @@ type Arbs =
     |> Arb.fromGen
 
   static member Currency(): Arbitrary<Currency> =
+    let other = gen {
+      let! chars = Gen.listOfLength 3 (Gen.elements "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+      let other = String(Array.ofList chars)
+      return Currency.Other other
+    }
     let generator =
       Gen.oneof [
-        Arb.generate<NonEmptyString> |> Gen.map (fun (NonEmptyString s) -> Currency.Other s)
+        other
         Gen.constant Currency.USD
         Gen.constant Currency.EUR
       ]

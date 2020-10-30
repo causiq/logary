@@ -65,10 +65,11 @@ type JsonFailureTag =
     | CaseTag of case: string
 type JsonFailureReason =
     | OtherError of err: exn
-    | MessageTypeUnknown of name: string
+    | DiscriminatorUnknown of typeName: string
     | TypeMismatch of expected: JsonMemberType * actual: JsonMemberType
     | DeserializationError of targetType: System.Type * err: exn
     | InvalidJson of err: string
+    /// The property is missing from the JsonObject, most likely
     | NoInput
 type JsonFailure =
     | Tagged of tag: JsonFailureTag * jFail: JsonFailure
@@ -104,7 +105,7 @@ module JsonFailureTag =
 module JsonFailureReason =
     let toString = function
         | OtherError e -> string e
-        | MessageTypeUnknown typ -> "Unknown message type: '" + typ + "'"
+        | DiscriminatorUnknown typ -> "Discriminator type unknown: '" + typ + "'"
         | TypeMismatch (e,a) -> System.String.Concat ("Expected to find ", JsonMemberType.describe e, ", but instead found ", JsonMemberType.describe a)
         | DeserializationError (t,e) -> System.String.Concat ("Unable to deserialize value as '", t.FullName, "': ", string e)
         | InvalidJson e -> "Invalid JSON, failed to parse: " + e
@@ -159,7 +160,7 @@ module JsonResult =
     let deserializationError<'a> exn : JsonResult<'a> = fail (SingleFailure (DeserializationError (typeof<'a>, exn)))
     let invalidJson err : JsonResult<'a> = fail (SingleFailure (InvalidJson err))
     let noInput<'a> : JsonResult<'a> = fail (SingleFailure NoInput)
-    let messageTypeUnknown f : JsonResult<'a> = fail (SingleFailure (MessageTypeUnknown f))
+    let discriminatorUnknown f : JsonResult<'a> = fail (SingleFailure (DiscriminatorUnknown f))
     let failWithTag t f : JsonResult<'a> = fail (Tagged (t, f))
     let tagOnFail t xR =
       match xR with
@@ -426,7 +427,7 @@ module JsonObject =
     let find k jsonObj =
         match tryFind k jsonObj with
         | Some v -> JsonResult.pass v
-        | None -> JsonResult.messageTypeUnknown k
+        | None -> JsonResult.failWithTag (CaseTag k) (SingleFailure NoInput)
 
     let optimizeRead = function
         | WriteObject ps -> ReadObject (ps, Map.ofList (List.rev ps))
