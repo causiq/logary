@@ -128,7 +128,7 @@ Target.create "Build" <| fun _ ->
         Configuration = configuration
         MSBuildParams = msbuildParams }
 
-  DotNet.build setParams "src/Logary.sln"
+  DotNet.build setParams "src/Core.sln"
 
 Target.create "Tests" (fun _ ->
   let commandLine (file: string) =
