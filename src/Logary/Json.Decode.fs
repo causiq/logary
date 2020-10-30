@@ -22,14 +22,14 @@ let floatMap: JsonDecoder<Map<float, float>> =
     D.float
 
 let kind: JsonDecoder<MessageKind> =
-  let inner =
-    String.toLowerInvariant >> function
+  let inner (s: string) =
+    match String.toLowerInvariant s with
     | "control" -> MessageKind.Control
     | "span" -> MessageKind.Span
     | "gauge" -> MessageKind.Gauge
     | "histogram" -> MessageKind.Histogram
-    | "setUserProperty" -> MessageKind.SetUserProperty
-    | "identifyUser" -> MessageKind.IdentifyUser
+    | "setuserproperty" -> MessageKind.SetUserProperty
+    | "identifyuser" -> MessageKind.IdentifyUser
     | "event" | _ -> MessageKind.Event
   inner <!> D.string
 
