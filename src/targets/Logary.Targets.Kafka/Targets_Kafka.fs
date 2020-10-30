@@ -303,7 +303,8 @@ module internal Impl =
                     Value=m,
                     Timestamp=Timestamp(m.timestamp / 1_000_000L, TimestampType.CreateTime)
                   )
-                let messageTopic = if conf.singleTopic then conf.topicName else sprintf "%s_%O" conf.topicName m.kind
+
+                let messageTopic = if conf.singleTopic then conf.topicName else sprintf "%s_%O" conf.topicName (m.kind.ToString().ToLowerInvariant())
                 let! _ = state.producer.ProduceAsync(messageTopic, mDTO)
                 do! ack *<= ()
 

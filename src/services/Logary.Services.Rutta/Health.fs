@@ -1,5 +1,7 @@
 namespace Logary.Services.Rutta
 
+open System.IO
+open System.Reflection
 open Logary
 open Logary.Ingestion
 open Logary.Metric.Prometheus
@@ -11,10 +13,20 @@ module Health =
   open System
   open fszmq
 
-  let healthMessage osDesc =
+  let readResource file =
+    let assembly = Assembly.GetExecutingAssembly()
+    let resourceName = sprintf "Logary.Services.Rutta.%s" file
+    use stream = assembly.GetManifestResourceStream(resourceName)
+    use reader = new StreamReader(stream)
+    reader.ReadToEnd()
+
+  let healthMessage () =
     let time = DateTime.UtcNow.ToString("o")
-    sprintf "Rutta %s running on '%s'. ZMQ v%O. %s"
+    let gitCommit = readResource "git-commit.txt"
+
+    sprintf "Rutta %s @ %s running on '%s'. ZMQ v%O. %s"
       AssemblyVersionInformation.AssemblyFileVersion
+      (gitCommit.Trim('\n'))
       RuntimeInformation.OSDescription
       ZMQ.version
       time

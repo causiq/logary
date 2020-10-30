@@ -29,6 +29,8 @@
     <Content Include="README.md" />
     <None Include="paket.references" />
     <Content Include="Dockerfile" />
+    <EmbeddedResource Include="git-commit.txt" />
+    <Content Include="Makefile" />
     <ProjectReference Include="../../Logary/Logary.fsproj" />
     <ProjectReference Include="../../targets/Logary.Targets.Shipper/Logary.Targets.Shipper.fsproj" />
     <ProjectReference Include="../../ingestion/Logary.Ingestion.HTTP/Logary.Ingestion.HTTP.fsproj" />

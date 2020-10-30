@@ -1,10 +1,14 @@
-.PHONY: prepare_restore build_image image test_kustomize deploy_dev deploy_as_daemonset deploy_as_deployment push release
+.PHONY: prepare_restore git_commit build_image image test_kustomize deploy_dev deploy_as_daemonset deploy_as_deployment push release
 
 TAG_VERSION_SUFFIX := $(shell ../../../tools/version.sh)
 COMMIT_SHA := $(shell git rev-parse HEAD)
 COMMIT_SHA_SHORT := $(shell git rev-parse --short HEAD)
 
 image: build_image
+
+git_commit:
+	git rev-parse HEAD >git-commit.txt
+	git update-index --assume-unchanged git-commit.txt
 
 # Copies all *(fs|cs)proj-files to .tmp/ so they can be restored inside the Docker container
 prepare_restore:
