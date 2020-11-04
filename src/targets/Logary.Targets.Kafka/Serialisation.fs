@@ -135,21 +135,34 @@ type Serialiser<'T>(ilogger: Logger,
     sb.ToString()
 
 
-  let validate schema (jsonStr: string) =
-    let jToken = JToken.Parse(jsonStr)
+  // opt-out after 1000 validations
+  let mutable skipValidation = false
 
-    // validate json
+  let validate schema (jsonStr: string) =
+    if skipValidation then Result.Ok () else
+
+    let jToken = JToken.Parse(jsonStr)
     let mutable errors = ResizeArray<ValidationError>() :> IList<_>
-    if not (jToken.IsValid(schema, &errors)) then
-      let errors = errors |> Seq.map printErrors |> String.concat "\n\n"
-      Result.Error errors
-    else
+
+    try
+      // E-mail to sales@newtonsoft.com was sent 2020-10-22 from henrik at haf dot se, without reply. Also, this code is
+      // GPL, so it's unclear whether we need a commercial license; in the case we go over, simply go without schema
+      // validation for this message.
+      if not (jToken.IsValid(schema, &errors)) then
+        let errors = errors |> Seq.map printErrors |> String.concat "\n\n"
+        Result.Error errors
+      else
+        Result.Ok ()
+
+    with :? JSchemaException ->
+      skipValidation <- true
       Result.Ok ()
 
   let validate (jsonStr: string) (schema: JSchema) =
     //let validationResult = validator.Validate(jsonStr, schema)
     match validate schema jsonStr with
-    | Result.Ok () -> ()
+    | Result.Ok () ->
+      ()
     | Result.Error error ->
       raise (InvalidDataException(sprintf "Schema validation failed with message: %s" error))
 
