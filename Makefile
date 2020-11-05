@@ -13,7 +13,7 @@ version_files:
 	dotnet fake build --single-target --target PaketFiles
 
 build: version_files restore
-	dotnet build src/Logary.sln -c release
+	dotnet build src/Core.sln -c release
 
 test: build
 	dotnet fake build --single-target --target Tests
