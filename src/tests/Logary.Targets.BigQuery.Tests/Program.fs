@@ -5,7 +5,6 @@ open Hopac
 open Logary
 open Logary.Tests
 open Logary.Internals
-open Logary.Targets
 open Logary.Targets.BigQuery
 open System
 open System.IO
@@ -22,14 +21,14 @@ let bigQuery =
 let target =
   testList "big query" [
     TargetBaseline.basicTests "Google BigQuery" (fun name ->
-      BigQuery.create bigQuery.Value name) true
+      create bigQuery.Value name) true
 
     testCaseJob "send" <| job {
       let ri = RuntimeInfo.ofServiceAndHost "bigquery-tests" "localhost"
-      let targetConf = BigQuery.create bigQuery.Value "logary-bigquery"
+      let targetConf = create bigQuery.Value "logary-bigquery"
       let! target = Target.create ri targetConf
 
-      for i in 0..20 do
+      for _ in 0..20 do
         let! ack =
           let e = raisedExnWithInner "outer exception" (raisedExn "inner exception")
           let evt = Model.Event("thing happened at {blah}", None, level=Error)
@@ -47,4 +46,4 @@ let target =
 let main argv =
   let privKey = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bigquery-service-account.json")
   Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", privKey)
-  Tests.runTestsInAssembly defaultConfig argv
+  runTestsInAssembly defaultConfig argv

@@ -113,7 +113,7 @@ let basicTests targetName confFac addTS =
     }
 
     testCaseJob "log user upgraded plan message" <| job {
-      let! targetApi, now = configure ()
+      let! targetApi, _ = configure ()
       do! logMsgWaitAndShutdown targetApi (fun logAndWait -> logAndWait Messages.userUpgradedPlan)
     }
   ]

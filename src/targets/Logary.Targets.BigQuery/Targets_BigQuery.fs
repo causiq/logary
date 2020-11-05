@@ -36,20 +36,19 @@ let empty = BigQueryConf.create()
 
 module internal Impl =
   open System
-  open System.IO
   open Google.Apis.Bigquery.v2.Data
   open Logary.Internals.Chiron
   module E = Json.Encode
 
   let tableSchema =
     let builder = TableSchemaBuilder()
-    let field name typ mode = new TableFieldSchema(Name=name, Type=typ, Mode=mode)
+    let field name typ mode = TableFieldSchema(Name=name, Type=typ, Mode=mode)
     let req name typ = field name typ "REQUIRED"
     let opt name typ = field name typ "NULLABLE"
     builder.Add(req "level" "INT64")
     builder.Add(opt "event" "STRING")
-    builder.Add(opt "monetaryValue.amount" "NUMERIC")
-    builder.Add(opt "monetaryValue.currency" "STRING")
+    builder.Add(opt "money_amount" "NUMERIC")
+    builder.Add(opt "money_currency" "STRING")
     builder.Add(req "name" "STRING")
     builder.Add(req "timestamp" "TIMESTAMP")
     /// JSON string
@@ -74,11 +73,11 @@ module internal Impl =
         let me = x.getAsOrThrow<EventMessage>()
         row.["event"] <- me.event
         if me.monetaryValue.IsSome then
-          row.["monetaryValue.amount"] <- me.monetaryValue.Value.value.asFloat
-          row.["monetaryValue.currency"] <- me.monetaryValue.Value.unit.name
+          row.["money_amount"] <- me.monetaryValue.Value.value.asFloat
+          row.["money_currency"] <- me.monetaryValue.Value.unit.name.Value
         else
-          row.["monetaryValue.amount"] <- 0.
-          row.["monetaryValue.currency"] <- "EUR"
+          row.["money_amount"] <- 0.
+          row.["money_currency"] <- "EUR"
       | _ -> ()
       row
 
@@ -97,12 +96,16 @@ module internal Impl =
 
     let rec initialise () =
       job {
+        logger.debug "Starting BigQuery target"
         let! platform = Platform.InstanceAsync()
+        logger.debug "Received platform information"
         let projectId = conf.projectId |> Option.defaultValue platform.ProjectId
         let client = BigQueryClient.Create(projectId)
         let dataset = client.GetOrCreateDataset(conf.dataset)
         let table = dataset.GetOrCreateTable(conf.table, tableSchema)
         do! maybeUpdate projectId dataset table tableSchema
+
+        logger.debug "Going into the Running state"
         return! running { table=table; client=client }
       }
 
@@ -132,11 +135,18 @@ module internal Impl =
           }
 
         api.shutdownCh ^=> fun ack ->
+          logger.debug "Shutting down BigQuery target"
           Job.Scheduler.isolate (fun _ -> (state :> IDisposable).Dispose())
           >>=. ack *<= ()
       ] :> Job<_>
 
-    initialise ()
+    Job.catch (initialise ()) >>= function
+      | Choice1Of2 () ->
+        Job.unit ()
+      | Choice2Of2 e ->
+        printfn "%A" e
+        Job.raises e
+
 
 /// Create a new BigQuery target
 [<CompiledName "Create">]
