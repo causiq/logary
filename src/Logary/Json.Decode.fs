@@ -30,6 +30,7 @@ let kind: JsonDecoder<MessageKind> =
     | "histogram" -> MessageKind.Histogram
     | "setuserproperty" -> MessageKind.SetUserProperty
     | "identifyuser" -> MessageKind.IdentifyUser
+    | "forgetuser" -> MessageKind.ForgetUser
     | "event" | _ -> MessageKind.Event
 
   inner <!> D.string
