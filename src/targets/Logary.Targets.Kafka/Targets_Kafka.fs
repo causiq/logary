@@ -127,7 +127,7 @@ let empty =
     prodConfFile = None
     prodConf =
       ProducerConfig(
-        BootstrapServers="ingress-broker-kafka-bootstrap.kafka.svc:9092",
+        BootstrapServers="broker-kafka-bootstrap.kafka.svc:9092",
         EnableIdempotence=Nullable<_> true,
         // https://github.com/tulios/kafkajs/issues/910
         CompressionType=Nullable<_> CompressionType.Snappy,
