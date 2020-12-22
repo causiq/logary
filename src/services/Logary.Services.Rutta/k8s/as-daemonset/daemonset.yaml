@@ -39,6 +39,7 @@ spec:
 
         - name: udp-json
           containerPort: 14001
+          protocol: UDP
 
         # The kubelet uses readiness probes to know when a container is ready to start accepting traffic.
         readinessProbe:
