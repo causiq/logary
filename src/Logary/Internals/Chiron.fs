@@ -702,7 +702,7 @@ module Parsing =
         let parseJsonString str = run json str
 
         let parseJsonStream stream =
-            runParserOnStream json () "" stream System.Text.Encoding.UTF8
+            runParserOnStream json () "" stream Logary.YoLo.UTF8.encoding
 
         let handleParserResult = function
             | Success (json, _, _) -> JsonResult.pass json

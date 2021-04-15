@@ -3,7 +3,6 @@ namespace Logary.Trace.Propagation
 open System
 open System.Collections.Generic
 open System.Globalization
-open System.Text
 open System.Text.RegularExpressions
 open Logary
 open Logary.Trace
@@ -72,7 +71,7 @@ module W3C =
     type Parser<'t> = Parser<'t, unit>
 
     let private toBytes: string -> byte list =
-      Encoding.UTF8.GetBytes >> List.ofArray
+      UTF8.encoding.GetBytes >> List.ofArray
 
     let private toBytePair (s: string) =
       byte >> fun i -> i, toBytes (i.ToString s)

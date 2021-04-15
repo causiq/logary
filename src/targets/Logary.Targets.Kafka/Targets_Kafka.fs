@@ -149,11 +149,13 @@ let empty =
 module internal Impl =
   open Logary.Internals.Chiron
 
+  let utf8 = UTF8Encoding(false)
+
   type Producer = IProducer<string, LogaryMessageBase>
 
   let keySerializer: ISerializer<string> =
     { new ISerializer<_> with
-        member x.Serialize(data, context): byte[] = Encoding.UTF8.GetBytes data
+        member x.Serialize(data, context): byte[] = utf8.GetBytes data
     }
 
   type SyslogLevel with

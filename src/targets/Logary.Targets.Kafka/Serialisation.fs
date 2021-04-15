@@ -36,6 +36,8 @@ module internal Constants =
   let MagicByte = 0uy
   let DefaultInitialBufferSize = 1024
 
+  let utf8 = UTF8Encoding(false)
+
 
 /// TO CONSIDER: Switch to Newtonsoft.Json.Schema
 type SchemaStrategy =
@@ -244,7 +246,7 @@ type Serialiser<'T>(ilogger: Logger,
           stream.WriteByte(Constants.MagicByte)
           writer.Write(IPAddress.HostToNetworkOrder(sId))
         | None -> ()
-        writer.Write(Encoding.UTF8.GetBytes(jsonStr))
+        writer.Write(Constants.utf8.GetBytes(jsonStr))
         return stream.ToArray()
       }
       |> Job.ToTask

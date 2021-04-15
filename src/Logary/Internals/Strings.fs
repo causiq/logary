@@ -4,7 +4,7 @@ namespace Logary.Internals
 
 open System
 open System.Buffers
-open System.Text
+open Logary.YoLo
 open FSharp.NativeInterop
 
 module private StringsModule =
@@ -21,11 +21,11 @@ type Strings =
 
   /// https://stackoverflow.com/questions/56979469/parse-utf8-string-from-readonlysequencebyte
   static member parseAsUTF8 (slice: ReadOnlySequence<byte>, ?strLenEst) =
-      if slice.IsSingleSegment then Encoding.UTF8.GetString(slice.FirstSpan) else
+      if slice.IsSingleSegment then UTF8.encoding.GetString(slice.FirstSpan) else
 
       let strLenEst = defaultArg strLenEst (int slice.Length)
 
-      let decoder = Encoding.UTF8.GetDecoder()
+      let decoder = UTF8.encoding.GetDecoder()
       let mutable preProcessedBytes = 0
       let mutable processedCharacters = 0
       let characterSpan = stackalloc<char> strLenEst

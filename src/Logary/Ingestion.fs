@@ -39,7 +39,7 @@ type Ingested =
   member x.utf8String() =
     match x with
     | ByteSeq bs -> Strings.parseAsUTF8 bs
-    | Bytes bs -> Encoding.UTF8.GetString bs
+    | Bytes bs -> UTF8.toString bs
     | String s -> s
 
 /// Callback when there are packets available.

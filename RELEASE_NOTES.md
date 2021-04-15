@@ -1,3 +1,6 @@
+#### 6.0.1
+* Avoid BOM marks in Prometheus
+
 #### 6.0
 * More message types
 

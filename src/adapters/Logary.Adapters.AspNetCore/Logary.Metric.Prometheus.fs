@@ -52,6 +52,8 @@ module ExporterConf =
     { conf with configureApp = configure }
 
 module Exporter =
+  let internal utf8 = UTF8Encoding(false)
+
   let writePrometheusPage (writer: TextWriter) (conf: ExporterConf): Task =
     task {
       let metrics = conf.metricRegistry.exportAll()
@@ -108,7 +110,7 @@ type Exporter private (cts: CancellationTokenSource) =
       task {
         context.Response.ContentType <- ExporterConf.DefaultContentType
         context.Response.StatusCode <- 200
-        let sw = new StreamWriter(context.Response.Body, Encoding.UTF8, leaveOpen=true)
+        let sw = new StreamWriter(context.Response.Body, Exporter.utf8, leaveOpen=true)
         do! Exporter.writePrometheusPage sw conf
         do! sw.DisposeAsync()
       } :> _

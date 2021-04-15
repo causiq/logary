@@ -25,6 +25,8 @@ type TCPConfig =
       ilogger = ilogger }
 
 module TCP =
+  let internal utf8 = UTF8Encoding(false)
+
   let recv (started: IVar<unit>, shutdown: IVar<unit>) (config: TCPConfig) (next: Ingest) =
     Job.Scheduler.isolate <| fun () ->
     config.ilogger.info "Starting ZMQ STREAM/TCP recv-loop."
@@ -49,7 +51,7 @@ module TCP =
           // A connection was made
           if bs.Length = 0 then () else
           use ms = new MemoryStream(bs)
-          use sr = new StreamReader(ms, Encoding.UTF8)
+          use sr = new StreamReader(ms, utf8)
           // This allows us to read a bunch of messages in from a single message
           while not sr.EndOfStream do
             let line = Ingested.ofString (sr.ReadLine())
