@@ -64,7 +64,7 @@ nuget Google.Cloud.PubSub.V1 strategy: min
 
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/TypeShape.fs
 github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/Utils.fs
-github haf/YoLo:bd91bbe94a183aa9dc9c13e885c73b20516b01e7 YoLo.fs
+github haf/YoLo:fdf183d43a1bc5728f79897abacd6f3156384ad0 YoLo.fs
 github haf/DVar src/DVar/DVar.fs
 github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs

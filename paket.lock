@@ -998,7 +998,7 @@ GITHUB
     src/TypeShape/TypeShape.fs (c39f18a164a9ce227656e2806c2bddfdde623a68)
     src/TypeShape/Utils.fs (c39f18a164a9ce227656e2806c2bddfdde623a68)
   remote: haf/YoLo
-    YoLo.fs (bd91bbe94a183aa9dc9c13e885c73b20516b01e7)
+    YoLo.fs (fdf183d43a1bc5728f79897abacd6f3156384ad0)
   remote: haf/DVar
     src/DVar/DVar.fs (a9572c17378116f4fc03da4b4ceb67ee94dae659)
   remote: logary/RingBuffer
