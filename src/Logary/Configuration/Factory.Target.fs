@@ -37,7 +37,7 @@ type TargetConfBuild<'T when 'T :> SpecificTargetConf> =
   /// The function to call for every log line, to verify
   /// whether to let it through
   /// </param>
-  abstract AcceptIf: Func<Model.LogaryMessageBase, bool> -> TargetConfBuild<'T>
+  abstract AcceptIf: acceptor: Func<Model.LogaryMessageBase, bool> -> TargetConfBuild<'T>
 
 /// All SpecificTargetConf implementors should take this as their single argument
 /// ctor, to go back into the parent context
