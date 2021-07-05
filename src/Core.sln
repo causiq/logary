@@ -11,6 +11,7 @@ ProjectSection(SolutionItems) = preProject
 	..\paket.dependencies = ..\paket.dependencies
 	..\build.fsx = ..\build.fsx
 	..\Makefile = ..\Makefile
+	..\paket.lock = ..\paket.lock
 EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ingestion", "ingestion", "{05B8BB9E-6548-4916-91FC-39BBC878C657}"

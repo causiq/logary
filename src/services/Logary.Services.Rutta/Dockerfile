@@ -1,15 +1,22 @@
 # --------
-FROM mcr.microsoft.com/dotnet/core/sdk:5.0-alpine as builder
+FROM mcr.microsoft.com/dotnet/sdk:5.0 as builder
 
 WORKDIR /build/
 
 ENV LC_ALL=C.UTF-8
 
-RUN apk add --no-cache --update alpine-sdk zeromq protobuf protobuf-dev ca-certificates && \
-    curl --silent -L -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
-    curl --silent -LO https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.31-r0/glibc-2.31-r0.apk && \
-    apk add glibc-2.31-r0.apk && \
-    rm -f /var/cache/apk/*
+RUN apt-get update
+
+RUN apt-get install -y --no-install-recommends \
+    git \
+    build-essential \
+    libtool \
+    autoconf \
+    automake \
+    pkg-config \
+    unzip \
+    libkrb5-dev \
+    uuid-dev
 
 # Required to do `dotnet restore`
 COPY .config ./.config
@@ -40,7 +47,7 @@ RUN find 'src/targets' -type f \
     -exec cp {} /app/ \;
 
 # -------
-FROM mcr.microsoft.com/dotnet/core/runtime:3.1-alpine3.11 as runner
+FROM mcr.microsoft.com/dotnet/runtime:5.0 as runner
 
 WORKDIR /app
 
