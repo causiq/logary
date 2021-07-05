@@ -12,7 +12,7 @@ nuget Expecto
 nuget Expecto.FsCheck
 nuget Expecto.Hopac
 nuget FParsec
-nuget FSharp.Core ~> 4.7
+nuget FSharp.Core ~> 5
 nuget Falanx.Proto.Codec.Binary
 nuget Falanx.Sdk
 nuget FluentMigrator
@@ -70,7 +70,7 @@ group Build
   storage none
   framework auto-detect
 
-  nuget FSharp.Core ~> 4.7.0
+  nuget FSharp.Core ~> 5
   nuget Fake.Api.GitHub
   nuget Fake.BuildServer.AppVeyor
   nuget Fake.BuildServer.TeamCity
@@ -97,7 +97,7 @@ group Examples
   nuget Argu
   nuget Castle.Core
   nuget FParsec
-  nuget FSharp.Core ~> 4.7
+  nuget FSharp.Core ~> 5
   nuget Hopac
   nuget NodaTime
   nuget RabbitMQ.Client
@@ -109,7 +109,7 @@ group Benchmarks
   redirects on
 
   nuget FParsec
-  nuget FSharp.Core ~> 4.7
+  nuget FSharp.Core ~> 5
   nuget Hopac
   nuget NodaTime
   nuget Expecto

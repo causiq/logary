@@ -3,8 +3,3 @@ NodaTime
 FParsec
 Hopac
 Ply
-
-File:YoLo.fs
-File:RingBuffer.fs
-File:Aether.fs
-File:DVar.fs

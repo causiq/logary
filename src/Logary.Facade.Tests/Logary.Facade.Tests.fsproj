@@ -7,10 +7,6 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\files\YoLo.fs">
-      <Paket>True</Paket>
-      <Link>files/YoLo.fs</Link>
-    </Compile>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Facade.fs" />
     <Compile Include="Program.fs" />
