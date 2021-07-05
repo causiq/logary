@@ -6,7 +6,7 @@ open System.Security.Cryptography.X509Certificates
 open System.Text
 open System.Threading
 open System.Threading.Tasks
-open FSharp.Control.Tasks.Builders
+open FSharp.Control.Tasks
 open Hopac
 open Logary
 open Logary.Configuration

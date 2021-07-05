@@ -4,9 +4,8 @@
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\messagetemplates\messagetemplates-fsharp\src\FsMtParser\FsMtParserFull.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/FsMtParserFull.fs</Link>
+    <Compile Include="..\files\FsMtParserFull.fs">
+      <Link>files/FsMtParserFull.fs</Link>
     </Compile>
     <Compile Include="MessageTemplates.fs" />
     <Compile Include="Destructure.fs" />

@@ -1,6 +1,6 @@
 source https://api.nuget.org/v3/index.json
-framework netstandard2.1, netcoreapp3.1
-version 5.242.2
+framework netstandard2.1, net5.0
+version 5.258.1
 
 nuget Argu
 nuget Castle.Core ~> 4.4
@@ -21,7 +21,7 @@ nuget FsCheck
 nuget FsPickler
 nuget FsPickler.Json
 nuget FsSql
-nuget Giraffe prerelease
+nuget Giraffe 5.0.0-alpha-002
 nuget Hopac
 nuget Http.fs
 nuget Jaeger.Thrift
@@ -62,15 +62,8 @@ nuget Google.Cloud.Logging.V2 strategy: min
 nuget Google.Cloud.BigQuery.V2 strategy: min
 nuget Google.Cloud.PubSub.V1 strategy: min
 
-github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/TypeShape.fs
-github eiriktsarpalis/TypeShape:c39f18a164a9ce227656e2806c2bddfdde623a68 src/TypeShape/Utils.fs
-github haf/YoLo:fdf183d43a1bc5728f79897abacd6f3156384ad0 YoLo.fs
-github haf/DVar src/DVar/DVar.fs
-github logary/RingBuffer RingBuffer.fs
 github logary/logary src/Logary.CSharp.Facade/Facade.cs
 github logary/logary src/Logary.Facade/Facade.fs
-github messagetemplates/messagetemplates-fsharp src/FsMtParser/FsMtParserFull.fs
-github xyncro/aether src/Aether/Aether.fs
 
 group Build
   source https://api.nuget.org/v3/index.json

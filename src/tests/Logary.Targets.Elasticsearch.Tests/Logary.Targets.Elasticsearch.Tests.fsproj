@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Logary.Targets.Elasticsearch.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <NoWarn>MSB3277</NoWarn>
     <DebugSymbols>true</DebugSymbols>
     <Tailcalls>true</Tailcalls>

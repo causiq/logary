@@ -138,7 +138,8 @@ module FactoryApiExtensions =
   /// </summary>
   /// <typeparam name="T">The <see cref="TargetConf"/> to configure
   /// with defaults</typeparam>
-  /// <param name="builder"></param>
+  /// <param name="builder">Builder object</param>
+  /// <param name="name">The target name</param>
   /// <returns>The same as input</returns>
   [<Extension; CompiledName "Target">]
   let target<'T when 'T :> Target.SpecificTargetConf> (builder: ConfBuilder) (name: string) =

@@ -350,7 +350,7 @@ let create conf name =
 ///
 /// <code>
 /// using Logary.Targets.Kafka;
-/// LogaryFactory.New( s => s.Target<Kafka.Builder>() )
+/// LogaryFactory.New( s => s.Target&lt;Kafka.Builder&gt;() )
 /// </code>
 type Builder(conf, callParent: ParentCallback<Builder>) =
   let update (conf': KafkaConf): Builder =

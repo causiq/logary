@@ -3,13 +3,13 @@
   <PropertyGroup>
     <AssemblyName>Logary.Facade.Tests</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
+    <Compile Include="..\files\YoLo.fs">
       <Paket>True</Paket>
-      <Link>paket-files/YoLo.fs</Link>
+      <Link>files/YoLo.fs</Link>
     </Compile>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Facade.fs" />

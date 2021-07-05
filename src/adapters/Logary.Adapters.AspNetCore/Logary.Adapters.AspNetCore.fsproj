@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <Description>Logary support for ASP.NET Core (MS MVC) logging for the `Microsoft.Extensions.*` packages.</Description>
     <Authors>Logary Contributors</Authors>
     <PackageTags>logary;opentelemetry;tracing;jaeger;aspnet</PackageTags>

@@ -5,35 +5,29 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <NoWarn>44;2003</NoWarn>
     <DefineConstants>TYPESHAPE_EXPOSE</DefineConstants>
-    <LangVersion>4.7</LangVersion>
+    <LangVersion>5.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DefineConstants>TYPESHAPE_EXPOSE;DEBUG</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\haf\DVar\src\DVar\DVar.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/DVar.fs</Link>
+    <Compile Include="..\files\DVar.fs">
+      <Link>files/DVar.fs</Link>
     </Compile>
-    <Compile Include="..\..\paket-files\eiriktsarpalis\TypeShape\src\TypeShape\Utils.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/Utils.fs</Link>
+    <Compile Include="..\files\Utils.fs">
+      <Link>files/Utils.fs</Link>
     </Compile>
-    <Compile Include="..\..\paket-files\eiriktsarpalis\TypeShape\src\TypeShape\TypeShape.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/TypeShape.fs</Link>
+    <Compile Include="..\files\TypeShape.fs">
+      <Link>files/TypeShape.fs</Link>
     </Compile>
-    <Compile Include="..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/Aether.fs</Link>
+    <Compile Include="..\files\Aether.fs">
+      <Link>files/Aether.fs</Link>
     </Compile>
-    <Compile Include="..\..\paket-files\haf\YoLo\YoLo.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/YoLo.fs</Link>
+    <Compile Include="..\files\YoLo.fs">
+      <Link>files/YoLo.fs</Link>
     </Compile>
-    <Compile Include="..\..\paket-files\logary\RingBuffer\RingBuffer.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/RingBuffer.fs</Link>
+    <Compile Include="..\files\RingBuffer.fs">
+      <Link>files/RingBuffer.fs</Link>
     </Compile>
     <!-- Below: values -->
     <Compile Include="LogLevel.fs" />

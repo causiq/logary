@@ -6,7 +6,5 @@ Ply
 
 File:YoLo.fs
 File:RingBuffer.fs
-File:TypeShape.fs
-File:Utils.fs
 File:Aether.fs
 File:DVar.fs

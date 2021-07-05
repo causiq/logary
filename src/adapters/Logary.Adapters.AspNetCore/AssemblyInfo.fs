@@ -4,12 +4,12 @@ open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("Logary.Adapters.AspNetCore")>]
 [<assembly: AssemblyProductAttribute("Logary.Adapters.AspNetCore")>]
-[<assembly: AssemblyVersionAttribute("6.0")>]
-[<assembly: AssemblyFileVersionAttribute("6.0")>]
+[<assembly: AssemblyVersionAttribute("6.0.1")>]
+[<assembly: AssemblyFileVersionAttribute("6.0.1")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "Logary.Adapters.AspNetCore"
     let [<Literal>] AssemblyProduct = "Logary.Adapters.AspNetCore"
-    let [<Literal>] AssemblyVersion = "6.0"
-    let [<Literal>] AssemblyFileVersion = "6.0"
+    let [<Literal>] AssemblyVersion = "6.0.1"
+    let [<Literal>] AssemblyFileVersion = "6.0.1"

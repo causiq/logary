@@ -90,29 +90,14 @@ Target.create "PaketFiles" (fun _ ->
   replace "module FsMtParserFull" "module Logary.Internals.FsMtParserFull"
           "paket-files/messagetemplates/messagetemplates-fsharp/src/FsMtParser/FsMtParserFull.fs"
 
-  replace "module TypeShape.Core.Core" "module Logary.Internals.TypeShape.Core.Core"
-          "paket-files/eiriktsarpalis/TypeShape/src/TypeShape/TypeShape.fs"
-
-  replace "module TypeShape.Core.Utils" "module Logary.Internals.TypeShape.Core.Utils"
-          "paket-files/eiriktsarpalis/TypeShape/src/TypeShape/Utils.fs"
-
   replace "module Aether" "module Logary.Internals.Aether"
           "paket-files/xyncro/aether/src/Aether/Aether.fs"
-
-  replace "module YoLo" "module internal Logary.YoLo"
-          "paket-files/haf/YoLo/YoLo.fs"
-
-  replace "module Hopac" "namespace Logary.Internals"
-          "paket-files/logary/RingBuffer/RingBuffer.fs"
 
   replace "namespace Logary.Facade" "namespace Libryy.Logging"
           "paket-files/logary/logary/src/Logary.Facade/Facade.fs"
 
   replace "namespace Logary.Facade" "namespace Cibryy.Logging"
           "paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs"
-
-  replace "namespace Utilities" "namespace Logary.Internals"
-          "paket-files/haf/DVar/src/DVar/DVar.fs"
 )
 
 /// This also restores.

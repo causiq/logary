@@ -1,25 +1,30 @@
 {
   // See https://go.microsoft.com/fwlink/?LinkId=733558
   // for the documentation about the tasks.json format
-  "version": "2.0.0",
+  "version": "0.1.0",
   "taskSelector": "/t:",
+  "showOutput": "silent",
   "tasks": [
     {
-      "label": "build",
+      "taskName": "build",
+      // Show the output window only if unrecognized errors occur.
+      "showOutput": "silent",
+      // Use the standard MS compiler pattern to detect errors, warnings and infos
+      "problemMatcher": "$msCompile",
       "command": "msbuild",
       "args": [
+        // Ask msbuild to generate full paths for file names.
         "/property:GenerateFullPaths=true",
         "/property:Configuration=Debug",
         "${workspaceRoot}/src/tests/Logary.Tests/Logary.Tests.fsproj"
-      ],
-      "problemMatcher": "$msCompile",
-      "group": "build"
+      ]
     },
     {
-      "label": "test",
+      "taskName": "test",
+      "showOutput": "silent",
       "command": "${workspaceRoot}/src/tests/Logary.Tests/bin/Debug/Logary.Tests.exe",
-      "problemMatcher": [],
-      "group": "test"
+      "isTestCommand": true,
+      "args": []
     }
   ]
 }

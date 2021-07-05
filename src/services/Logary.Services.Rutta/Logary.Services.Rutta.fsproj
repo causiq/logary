@@ -4,7 +4,7 @@
     <AssemblyName>rutta</AssemblyName>
     <RootNamespace>Logary.Services.Rutta</RootNamespace>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
     <Optimize>true</Optimize>

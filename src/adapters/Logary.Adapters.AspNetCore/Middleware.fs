@@ -6,7 +6,7 @@ open System.Globalization
 open Logary.Metric
 open Logary.Trace
 open System.Threading.Tasks
-open FSharp.Control.Tasks.Builders
+open FSharp.Control.Tasks
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.Routing
 

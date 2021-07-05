@@ -1,4 +1,4 @@
-#I "bin/Release/netcoreapp3.1"
+#I "bin/Release/net5.0"
 #r "Logary"
 #r "Hopac"
 #r "Hopac.Core"
