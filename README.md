@@ -9,7 +9,7 @@
 
 <p align="center">
   Twitter: <a href="https://twitter.com/logarylib">@logarylib</a><br>
-  Docs: <a href="https://logary.tech">logary.tech</a>
+  Docs: <a href="https://docs.logary.tech">docs.logary.tech</a>
 </p>
 
 ## Why?
