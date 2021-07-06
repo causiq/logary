@@ -17,7 +17,7 @@
 Logary is a high-performance, structured logging library which you can do health and metrics for
 .Net.
 
- - Full support for Structured/Semantic Logging
+ - Full support for Structured Logging and tracing following OpenTelemetry's specs
  - F# idiomatic code
  - Using C#? Then `Logary.CSharp` is for you!
  - Looking for an F# alternative to [`LibLog`](https://github.com/damianh/LibLog)?
