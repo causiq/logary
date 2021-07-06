@@ -37,12 +37,8 @@ BuildServer.install [
 ]
 
 let testProjects =
-  !! "src/tests/**/*.fsproj"
+  !! "src/*.Tests/*.fsproj"
   ++ "src/services/*.Tests/*.fsproj"
-  ++ "src/*.Tests/*.fsproj"
-  -- "src/tests/Logary.Targets.SSE.Tests/*.fsproj"
-  -- "src/tests/Logary.Targets.OpsGenie.Tests/*.fsproj"
-  -- "src/tests/Logary.Targets.BigQuery.Tests/*.fsproj"
 
 let libProjects =
   !! "src/targets/**/*.fsproj"
