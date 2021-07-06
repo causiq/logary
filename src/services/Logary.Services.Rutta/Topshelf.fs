@@ -54,30 +54,9 @@ module FSharpApi =
 
   let addCommandLineSwitch str action = addHostConfigurationStep (fun c -> c.AddCommandLineSwitch(str, action |> toAction1);c)
 
-  let addDependency depName = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.AddDependency depName
-#else
-    c
-#endif
-    )
-  let beforeInstall f = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.BeforeInstall(f |> toAction1)
-#else
-    c
-#endif
-    )
-  let afterInstall f = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.AfterInstall(f |> toAction1)
-#else
-    c
-#endif
-    )
+  let addDependency depName = addHostConfigurationStep (fun c -> c.AddDependency depName)
+  let beforeInstall f = addHostConfigurationStep (fun c -> c.BeforeInstall(f |> toAction1))
+  let afterInstall f = addHostConfigurationStep (fun c -> c.AfterInstall(f |> toAction1))
 
   let applyCommandLine str = addHostConfigurationStep (fun c -> c.ApplyCommandLine str;c)
 
@@ -85,117 +64,35 @@ module FSharpApi =
 
   let afterUninstall f = addHostConfigurationStep (fun c -> c.AfterUninstall(f |> toAction))
 
-  let dependsOn name = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.DependsOn name
-#else
-    c
-#endif
-    )
-  let disabled = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.Disabled()
-#else
-    c
-#endif
-    )
+  let dependsOn name = addHostConfigurationStep (fun c -> c.DependsOn name)
+  let disabled = addHostConfigurationStep (fun c -> c.Disabled())
 
-  let enablePauseAndContinue = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.EnablePauseAndContinue()
-    c
-#else
-    c
-#endif
-    )
+  let enablePauseAndContinue = addHostConfigurationStep (fun c -> c.EnablePauseAndContinue(); c)
 
-  let enableServiceRecovery f = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.EnableServiceRecovery(f |> toAction1)
-#else
-    c
-#endif
-    )
+  let enableServiceRecovery f = addHostConfigurationStep (fun c -> c.EnableServiceRecovery(f |> toAction1))
 
   let enableShutdown = addHostConfigurationStep (fun c -> c.EnableShutdown();c)
 
   let loadHelpTextPrefix asm str = addHostConfigurationStep (fun c -> c.LoadHelpTextPrefix(asm,str))
 
-  let runAs usr pwd = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.RunAs(usr,pwd)
-#else
-    c
-#endif
-    )
-  let runAsNetworkService = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.RunAsNetworkService()
-#else
-    c
-#endif
-    )
-  let runAsLocalSystem = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.RunAsLocalSystem()
-#else
-    c
-#endif
-    )
-  let runAsLocalService = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.RunAsLocalService()
-#else
-    c
-#endif
-    )
-  let runAsPrompt = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.RunAsPrompt()
-#else
-    c
-#endif
-    )
+  let runAs usr pwd = addHostConfigurationStep (fun c -> c.RunAs(usr, pwd))
+
+  let runAsNetworkService = addHostConfigurationStep (fun c -> c.RunAsNetworkService())
+  let runAsLocalSystem = addHostConfigurationStep (fun c -> c.RunAsLocalSystem())
+  let runAsLocalService = addHostConfigurationStep (fun c -> c.RunAsLocalService())
+  let runAsPrompt = addHostConfigurationStep (fun c -> c.RunAsPrompt())
 
   let helpTextPrefix str = addHostConfigurationStep (fun c -> c.SetHelpTextPrefix str)
 
-  let startAuto = addHostConfigurationStep (fun c ->
-#if NET461
-    // https://github.com/Topshelf/Topshelf/issues/444
-    c.StartAutomatically()
-#else
-    c
-#endif
-    )
-  let startAutoDelayed = addHostConfigurationStep (fun c ->
-#if NET461
-    c.StartAutomaticallyDelayed()
-#else
-    c
-#endif
-    )
-  let startManually = addHostConfigurationStep (fun c ->
-#if NET461
-    c.StartManually()
-#else
-    c
-#endif
-    )
+  let startAuto = addHostConfigurationStep (fun c -> c.StartAutomatically())
+  let startAutoDelayed = addHostConfigurationStep (fun c -> c.StartAutomaticallyDelayed())
+  let startManually = addHostConfigurationStep (fun c -> c.StartManually())
 
-  let useEnvBuilder f = addHostConfigurationStep (fun c -> c.UseEnvironmentBuilder(new EnvironmentBuilderFactory(f));c)
+  let useEnvBuilder f = addHostConfigurationStep (fun c -> c.UseEnvironmentBuilder(EnvironmentBuilderFactory(f));c)
 
-  let useHostBuilder f = addHostConfigurationStep (fun c -> c.UseHostBuilder(new HostBuilderFactory(f));c)
+  let useHostBuilder f = addHostConfigurationStep (fun c -> c.UseHostBuilder(HostBuilderFactory(f));c)
 
-  let useServiceBuilder f = addHostConfigurationStep (fun c -> c.UseServiceBuilder(new ServiceBuilderFactory(f));c)
+  let useServiceBuilder f = addHostConfigurationStep (fun c -> c.UseServiceBuilder(ServiceBuilderFactory(f));c)
 
   let useTestHost = addHostConfigurationStep (fun c -> c.UseTestHost())
 
@@ -228,13 +125,7 @@ module FSharpApi =
 
     let withRecovery serviceRecovery =
         let f sc = serviceRecovery.serviceRecoveryConfigurations |> List.fold (fun s x -> x s) sc |> ignore
-        addHostConfigurationStep (fun c ->
-#if NET461
-          c.EnableServiceRecovery(f |> toAction1)
-#else
-          c
-#endif
-          )
+        addHostConfigurationStep (fun c -> c.EnableServiceRecovery(f |> toAction1))
 
     let restart (span: TimeSpan) =
       addServiceRecoveryStep (fun c -> c.RestartService(int span.TotalMinutes))
