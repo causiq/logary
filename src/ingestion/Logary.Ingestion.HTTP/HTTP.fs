@@ -61,6 +61,25 @@ module internal Impl =
   /// https://github.com/Microsoft/Microsoft.IO.RecyclableMemoryStream
   let private manager = RecyclableMemoryStreamManager(ThrowExceptionOnToArray = true)
 
+  let headersOfInterest = [
+    "cf-ipcountry" // https://support.cloudflare.com/hc/en-us/articles/200168236-Configuring-Cloudflare-IP-Geolocation
+    "cf-connecting-ip" // https://support.cloudflare.com/hc/en-us/articles/200170986
+    "x-forwarded-for"
+    "x-forwarded-proto"
+    "forwarded" // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Forwarded
+  ]
+
+  let getHeaders (state: Map<string, Value>) (req: HttpRequest): Map<string, Value> =
+    headersOfInterest
+      |> List.fold (fun xs x ->
+        match req.Headers.TryGetValue x with
+        | false, _ ->
+          state
+        | true, values ->
+          let value = Value.Str (String.concat "," values)
+          state |> Map.add x value
+      ) state
+
   let ingestWith (onSuccess, onError) (ingest: Ingest): HttpHandler =
     let getResult (ctx: HttpContext) =
       task {
@@ -68,8 +87,9 @@ module internal Impl =
         use ms = manager.GetStream "Logary.Ingestion.HTTP.ingestWith"
         try
           do! ctx.Request.Body.CopyToAsync(ms)
-          let ros = ReadOnlySequence(ms.GetBuffer(), 0, int <| ms.Length)
-          let input = Ingested.ofReadOnlySeq ros
+          let ros = ReadOnlySequence(ms.GetBuffer(), 0, int ms.Length)
+          let md = getHeaders Map.empty ctx.Request
+          let input = Ingested.ofReadOnlySeq(ros, md)
           return! Job.ToTask (ingest input)
         finally
           ms.Dispose()
@@ -122,6 +142,8 @@ module HTTP =
         >=> route config.rootPath
         >=> API.withOrigin config.corsConfig (fun ao -> ao.asHttpHandler)
         >=> ingestWith (config.onSuccess, config.onError) ingest
+
+      RequestErrors.NOT_FOUND false
     ]
 
   let internal errorHandler (logger: Logger) (ex: Exception) _ =

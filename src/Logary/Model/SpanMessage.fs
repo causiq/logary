@@ -9,6 +9,8 @@ open Logary.Trace
 open System.Threading
 open System.Collections.Generic
 
+#nowarn "346"
+
 /// Once you pass mutable reference types into this message c'tor, those references are owned by the SpanMessage and
 /// should not be mutated from the outside.
 [<Sealed>]
@@ -207,6 +209,7 @@ type SpanMessage(label: string,
     x.writeCopy builder :> LogaryMessageBase
 
   // TODO: get hash code for SpanMessage
+  //override x.GetHashCode() =
 
   // equality
   override x.Equals o =

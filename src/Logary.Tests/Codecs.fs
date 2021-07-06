@@ -12,14 +12,24 @@ open Logary.Internals
 let tests =
   testList "codecs" [
     testCase "plain"  <| fun () ->
-      match Codec.plain (Ingested.String "hello") with
+      match Codec.plain (Ingested.ofString "hello") with
       | Result.Ok m ->
         let e = m.[0].getAsOrThrow<EventMessage>()
         e.event
           |> Expect.equal "Should have right value" "hello"
-
       | Result.Error err ->
-        failtestf "%s" err
+        failtest err
+
+    testList "json" [
+      testCase "with headers" <| fun () ->
+        match Codec.json (Ingested.ofString("""{"event":"Hello world","type":"event"}""", Map [ "cf-ipcountry", Value.Str "SE" ])) with
+        | Result.Ok m ->
+          m.[0].context.["cf-ipcountry"]
+            |> Expect.equal "Has the country IP" (Value.Str "SE")
+
+        | Result.Error err ->
+          failtest err
+    ]
 
     testList "log4j XML" [
       testCase "log4j XML 1" <| fun () ->
@@ -27,7 +37,7 @@ let tests =
     <log4j:message><![CDATA[Sample info message]]></log4j:message>
     <log4j:locationInfo class="com.howtodoinjava.Log4jXMLLayoutExample" method="main" file="Log4jXMLLayoutExample.java" line="15"/>
 </log4j:event>"""
-        match Codec.log4jXML (Ingested.String sample) with
+        match Codec.log4jXML (Ingested.ofString sample) with
         | Result.Ok m ->
           let m = m.[0].getAsOrThrow<EventMessage>()
           m.event
@@ -59,7 +69,7 @@ method="run" file="Generator.java" line="94"/>
     <log4j:data name="log4japp" value="udp-generator"/>
   </log4j:properties>
 </log4j:event>"""
-        match Codec.log4jXML (Ingested.String sample) with
+        match Codec.log4jXML (Ingested.ofString sample) with
         | Result.Ok m ->
           let m = m.[0].getAsOrThrow<EventMessage>()
           m.name
@@ -108,19 +118,19 @@ method="run" file="Generator.java" line="94"/>
 
       testCase "log4j XML bad input; no crash" <| fun () ->
         "bad bad bad"
-          |> Ingested.String
+          |> Ingested.ofString
           |> Codec.log4jXML
           |> Expect.isError "Failed to parse string, but did not throw."
 
       testCase "log4j XML no input; no crash" <| fun () ->
         ""
-          |> Ingested.String
+          |> Ingested.ofString
           |> Codec.log4jXML
           |> Expect.isError "Failed to parse string, but did not throw."
 
       testCase "log4j XML missing tags; no crash" <| fun () ->
         "<a></a>"
-          |> Ingested.String
+          |> Ingested.ofString
           |> Codec.log4jXML
           |> Expect.isError "Failed to parse string, but did not throw."
     ]

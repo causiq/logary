@@ -22,6 +22,7 @@ module Codec =
       let line = input.utf8String ()
       match Json.parse line |> JsonResult.bind Json.Decode.messageBatch with
       | JPass messages ->
+        messages |> Array.iter (fun m -> m.setContextValues input.metadata)
         Ok messages
       | JFail failure ->
         Result.Error (JsonFailure.summarize failure)
@@ -33,11 +34,12 @@ module Codec =
   /// decoding!
   let plain: Codec =
     fun input ->
-      input.utf8String()
-        |> Model.Event
-        :> LogaryMessageBase
-        |> Array.singleton
-        |> Ok
+      let message =
+        input.utf8String()
+          |> Model.Event
+          :> LogaryMessageBase
+      message.setContextValues input.metadata
+      Ok (Array.singleton message)
 
   type Log4JMessage =
     { logger: string
@@ -161,7 +163,10 @@ module Codec =
     fun input ->
       input.utf8String ()
       |> Log4JMessage.parse
-      |> Result.map (fun log4jm -> log4jm.normalise () :> LogaryMessageBase)
+      |> Result.map (fun log4jm ->
+        let message = log4jm.normalise () :> LogaryMessageBase
+        message.setContextValues input.metadata
+        message)
       |> Result.map Array.singleton
 
   // let regex: Codec

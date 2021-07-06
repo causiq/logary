@@ -3,51 +3,61 @@ namespace Logary.Ingestion
 open System.Buffers
 open System.Collections.Generic
 open System.Net
-open System.Text
 open Hopac
 open Hopac.Infixes
 open Logary
 open Logary.Internals
 
-/// An ingested value. Either a string or a byte array.
-[<Struct; RequireQualifiedAccess>]
+type Metadata = IReadOnlyDictionary<string, Value>
+
+/// An ingested value.
+[<RequireQualifiedAccess>]
 type Ingested =
   /// See https://github.com/fsharp/fslang-suggestions/issues/648
   /// Useful for Protobuf/gRPC ingestion points
-  | Bytes of bs: byte[]
-  | ByteSeq of ros: ReadOnlySequence<byte>
+  | Bytes of metadata: Metadata * bs: byte[]
+  | ByteSeq of metadata: Metadata * ros: ReadOnlySequence<byte>
   /// Useful for JSON/HTTP/TCP-lines ingestion points
-  | String of s: string
+  | String of metadata: Metadata * s: string
+
   /// Create a new Ingested value from a string
-  static member ofString s =
+  static member ofString(s, ?metadata) =
     if isNull s then nullArg "s"
-    String s
+    String (defaultArg metadata Map.empty, s)
   /// Create a new Ingested value from the ReadOnlySequence passed
-  static member ofBytes bs =
-    Bytes bs
+  static member ofBytes(bs, ?metadata) =
+    Bytes (defaultArg metadata Map.empty, bs)
   /// Create a new Ingested value from the byte array
-  static member ofReadOnlySeq (bs: ReadOnlySequence<byte>) =
-    ByteSeq bs
+  static member ofReadOnlySeq (bs: ReadOnlySequence<byte>, ?metadata) =
+    ByteSeq (defaultArg metadata Map.empty, bs)
   static member forceBytes = function
-    | Bytes bs -> bs
-    | ByteSeq r -> r.ToArray()
-    | String s -> failwithf "Unexpected string '%s' in Ingested, when ReadOnlySequence<byte> was expected" s
+    | Bytes (_, bs) -> bs
+    | ByteSeq (_, r) -> r.ToArray()
+    | String (_, s) -> failwithf "Unexpected string '%s' in Ingested, when ReadOnlySequence<byte> was expected" s
+
+  member x.metadata =
+    match x with
+    | Bytes (m,_) -> m
+    | ByteSeq (m, _) -> m
+    | String (m, _) -> m
 
   /// If a string, returns the string; or if array segment, tries to get the string
   /// from that array segment; ensure there are no half-characters in the array,
   /// or you'll get back a broken string value.
   member x.utf8String() =
     match x with
-    | ByteSeq bs -> Strings.parseAsUTF8 bs
-    | Bytes bs -> UTF8.toString bs
-    | String s -> s
+    | ByteSeq (_, bs) -> Strings.parseAsUTF8 bs
+    | Bytes (_, bs) -> UTF8.toString bs
+    | String (_, s) -> s
 
 /// Callback when there are packets available.
 /// TO CONSIDER: `'err` instead of string.
 type Ingest = Ingested -> Job<Result<unit, string>>
 
 
-type Scheme = Scheme of scheme: string
+type Scheme =
+  Scheme of scheme: string
+
 type NIC =
   NIC of nic: string
 with
