@@ -71,9 +71,7 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
     let isVerbose = results.Contains Args.Verbose
     let internalLevel =
       if isVerbose then LogLevel.Verbose
-      else
-        results.TryPostProcessResult(Log_Level, LogLevel.ofString)
-          |> Option.defaultValue LogLevel.Warn
+      else results.TryPostProcessResult(Log_Level, LogLevel.ofString) |> Option.defaultValue LogLevel.Debug
     let consoleConf = Console.ConsoleConf.create(SimpleMessageWriter(), Console.Error, includeResource=isVerbose)
     let hostName = Dns.GetHostName()
     let logary =
@@ -103,12 +101,12 @@ let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResu
       let trustedViaStore = error = Security.SslPolicyErrors.None
       if not trustedViaStore then
         ilogger.debug (
-          if trustedViaHash then sprintf "cert hash=%s trusted via command-line argument" hash
-          else sprintf "cert hash=%s is not trusted" hash)
+          if trustedViaHash then $"cert hash=%s{hash} trusted via command-line argument"
+          else $"cert hash=%s{hash} is not trusted")
       trustedViaHash || trustedViaStore
 
   if results.Contains Version || results.IsUsageRequested then
-    printfn "%s" (parser.PrintUsage())
+    printfn $"%s{parser.PrintUsage()}"
     0
   else
     ilogger.verbose "Starting health service"
