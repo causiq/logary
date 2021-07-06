@@ -42,7 +42,7 @@ module internal Impl =
   open RequestErrors
 
   let printHelp (config: HTTPConfig): HttpHandler =
-    let message = sprintf "You can post a JSON Objects to: %s" config.rootPath
+    let message = $"You can post a JSON Objects to: %s{config.rootPath}"
     text message
 
   let onSuccess: HttpHandler =

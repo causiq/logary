@@ -2,15 +2,13 @@ namespace Logary.Services.Rutta
 
 module Proxy =
   open System
-  open Logary
   open fszmq
   open fszmq.Socket
 
   let proxy xsubBind xpubBind =
-    printfn """Proxy usage: takes the XSUB read-socket (that PUB sockets CONNECT to) \
-               and then the XPUB write-socket (that SUB sockets CONNECT to). \
-               --proxy %s %s"""
-            xsubBind xpubBind
+    printfn $"""Proxy usage: takes the XSUB read-socket (that PUB sockets CONNECT to) \
+                and then the XPUB write-socket (that SUB sockets CONNECT to). \
+                --proxy %s{xsubBind} %s{xpubBind}"""
 
     use context = new Context()
     use reader = Context.xsub context

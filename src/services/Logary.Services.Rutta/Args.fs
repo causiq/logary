@@ -150,7 +150,7 @@ type ShipperSubCommand =
 type Args =
   | [<AltCommandLine "-V"; Inherit; Unique>] Version
   | [<AltCommandLine "-v"; Inherit; Unique>] Verbose
-  | [<Unique>] Log_Level of level: string
+  | [<AltCommandLine "-L"; Unique>] Log_Level of level: string
   /// LOGARY_RUTTA_TLS_TRUST_CERT
   | [<AltCommandLine "-t"; Inherit>] Tls_Trust_Cert of certHash: string
   /// LOGARY_RUTTA_APP_ID

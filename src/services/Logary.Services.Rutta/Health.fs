@@ -15,7 +15,7 @@ module Health =
 
   let readResource file =
     let assembly = Assembly.GetExecutingAssembly()
-    let resourceName = sprintf "Logary.Services.Rutta.%s" file
+    let resourceName = $"Logary.Services.Rutta.%s{file}"
     use stream = assembly.GetManifestResourceStream(resourceName)
     use reader = new StreamReader(stream)
     reader.ReadToEnd()
@@ -23,13 +23,7 @@ module Health =
   let healthMessage () =
     let time = DateTime.UtcNow.ToString("o")
     let gitCommit = readResource "git-commit.txt"
-
-    sprintf "Rutta %s @ %s running on '%s'. ZMQ v%O. %s"
-      AssemblyVersionInformation.AssemblyFileVersion
-      (gitCommit.Trim('\n'))
-      RuntimeInformation.OSDescription
-      ZMQ.version
-      time
+    $"Rutta %s{AssemblyVersionInformation.AssemblyFileVersion} @ %s{gitCommit.Trim('\n')} running on '%s{RuntimeInformation.OSDescription}'. ZMQ v{ZMQ.version}. %s{time}"
 
   open Giraffe
   open Successful

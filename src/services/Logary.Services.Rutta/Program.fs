@@ -148,10 +148,10 @@ let execute argv (exiting: ManualResetEventSlim): int =
     executeInner argv exiting parser results
   with
   | :? ArguParseException as e ->
-    printfn "%s" e.Message
+    printfn $"%s{e.Message}"
     11
   | e ->
-    eprintfn "Fatal error: %O" e
+    eprintfn $"Fatal error: {e}"
     100
 
 
