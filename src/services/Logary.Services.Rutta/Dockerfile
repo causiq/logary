@@ -32,7 +32,7 @@ RUN dotnet tool restore && \
 COPY . .
 
 RUN make version_files && \
-    dotnet publish -c release -r linux-musl-x64 src/services/Logary.Services.Rutta -o /app
+    dotnet publish -c release -r linux-x64 src/services/Logary.Services.Rutta -o /app
 
 # Now, copy all targets to Logary Rutta, so they are available
 RUN find 'src/targets' -type f \

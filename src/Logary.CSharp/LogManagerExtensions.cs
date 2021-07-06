@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Logary.Configuration;
+using Logary.Internals;
 using NodaTime;
 
 namespace Logary
