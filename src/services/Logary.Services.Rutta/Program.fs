@@ -189,7 +189,7 @@ let startUnix argv: int =
 ////////////// BOTH //////////////
 [<EntryPoint>]
 let main argv =
-  eprintfn "%s\n" (Health.healthMessage ())
+  eprintfn $"%s{Health.healthMessage ()}\n"
 
   let osDesc = RuntimeInformation.OSDescription
   let isDashed = argv.Length >= 1 && argv.[0] = "--"
