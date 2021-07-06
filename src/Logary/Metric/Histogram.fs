@@ -59,8 +59,8 @@ module HistogramConf =
   /// service. Most likely, however, you will be required to define buckets
   /// customized to your use case.
   ///
-  /// This default has values from five milliseconds up to thirty-two seconds.
-  let defaultBuckets = [| 0.005; 0.01; 0.025; 0.05; 0.075; 0.1; 0.25; 0.5; 0.75; 1.; 2.5; 5.0; 7.5; 10.; 32. |]
+  /// This default has values from 5µs up to 2.5s.
+  let defaultBuckets = [| 0.000_005; 0.000_05; 0.000_5; 0.005; 0.05; 0.1; 0.25; 0.5; 0.75; 1.; 2.5; |]
 
   let buckets buckets (conf: HistogramConf) =
     { conf with buckets = buckets }
