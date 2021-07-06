@@ -1,3 +1,6 @@
+#### 6.0.5
+* Minor fixes
+
 #### 6.0.4
 * Start web server latency histogram from 0.000 005 seconds, i.e. 5µs.
 
