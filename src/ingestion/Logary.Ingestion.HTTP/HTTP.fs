@@ -67,6 +67,7 @@ module internal Impl =
     "x-forwarded-for"
     "x-forwarded-proto"
     "forwarded" // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Forwarded
+    "user-agent" // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent
   ]
 
   let getHeaders (state: Map<string, Value>) (req: HttpRequest): Map<string, Value> =

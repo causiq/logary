@@ -1,3 +1,6 @@
+#### 6.0.6
+* Add user-agent to the list of interesting headers in HTTP ingestion
+
 #### 6.0.5
 * Minor fixes
 
