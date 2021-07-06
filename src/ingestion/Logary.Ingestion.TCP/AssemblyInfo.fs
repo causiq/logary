@@ -4,12 +4,12 @@ open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("Logary.Ingestion.TCP")>]
 [<assembly: AssemblyProductAttribute("Logary.Ingestion.TCP")>]
-[<assembly: AssemblyVersionAttribute("6.0.1")>]
-[<assembly: AssemblyFileVersionAttribute("6.0.1")>]
+[<assembly: AssemblyVersionAttribute("6.0.2")>]
+[<assembly: AssemblyFileVersionAttribute("6.0.2")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "Logary.Ingestion.TCP"
     let [<Literal>] AssemblyProduct = "Logary.Ingestion.TCP"
-    let [<Literal>] AssemblyVersion = "6.0.1"
-    let [<Literal>] AssemblyFileVersion = "6.0.1"
+    let [<Literal>] AssemblyVersion = "6.0.2"
+    let [<Literal>] AssemblyFileVersion = "6.0.2"

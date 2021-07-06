@@ -1,3 +1,6 @@
+#### 6.0.2
+* Support capturing certain reverse proxy headers, like geoip
+
 #### 6.0.1
 * Avoid BOM marks in Prometheus
 

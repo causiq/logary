@@ -4,12 +4,12 @@ open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("Logary.Targets.ElmahIO")>]
 [<assembly: AssemblyProductAttribute("Logary.Targets.ElmahIO")>]
-[<assembly: AssemblyVersionAttribute("6.0.1")>]
-[<assembly: AssemblyFileVersionAttribute("6.0.1")>]
+[<assembly: AssemblyVersionAttribute("6.0.2")>]
+[<assembly: AssemblyFileVersionAttribute("6.0.2")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "Logary.Targets.ElmahIO"
     let [<Literal>] AssemblyProduct = "Logary.Targets.ElmahIO"
-    let [<Literal>] AssemblyVersion = "6.0.1"
-    let [<Literal>] AssemblyFileVersion = "6.0.1"
+    let [<Literal>] AssemblyVersion = "6.0.2"
+    let [<Literal>] AssemblyFileVersion = "6.0.2"
