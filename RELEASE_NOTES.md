@@ -1,3 +1,6 @@
+#### 6.0.3
+* Minor bugfix in header reading
+
 #### 6.0.2
 * Support capturing certain reverse proxy headers, like geoip
 

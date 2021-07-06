@@ -74,10 +74,10 @@ module internal Impl =
       |> List.fold (fun xs x ->
         match req.Headers.TryGetValue x with
         | false, _ ->
-          state
+          xs
         | true, values ->
           let value = Value.Str (String.concat "," values)
-          state |> Map.add x value
+          xs |> Map.add x value
       ) state
 
   let ingestWith (onSuccess, onError) (ingest: Ingest): HttpHandler =
