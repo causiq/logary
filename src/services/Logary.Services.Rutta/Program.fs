@@ -69,7 +69,11 @@ let inline executeParser argv (exiting: ManualResetEventSlim) (subParser: Argume
 let executeInner argv exiting (parser: ArgumentParser<Args>) (results: ParseResults<Args>) =
   let internalLogary, ilogger =
     let isVerbose = results.Contains Args.Verbose
-    let internalLevel = if isVerbose then LogLevel.Verbose else LogLevel.Debug
+    let internalLevel =
+      if isVerbose then LogLevel.Verbose
+      else
+        results.TryPostProcessResult(Log_Level, LogLevel.ofString)
+          |> Option.defaultValue LogLevel.Warn
     let consoleConf = Console.ConsoleConf.create(SimpleMessageWriter(), Console.Error, includeResource=isVerbose)
     let hostName = Dns.GetHostName()
     let logary =

@@ -150,6 +150,7 @@ type ShipperSubCommand =
 type Args =
   | [<AltCommandLine "-V"; Inherit; Unique>] Version
   | [<AltCommandLine "-v"; Inherit; Unique>] Verbose
+  | [<Unique>] Log_Level of level: string
   /// LOGARY_RUTTA_TLS_TRUST_CERT
   | [<AltCommandLine "-t"; Inherit>] Tls_Trust_Cert of certHash: string
   /// LOGARY_RUTTA_APP_ID
@@ -166,6 +167,8 @@ with
         "Prints version information."
       | Verbose ->
         "Enables verbose logging while running Rutta. Useful for debugging your setup."
+      | Log_Level _  ->
+        "Sets the internal log level"
       | Tls_Trust_Cert _ ->
         "Can be supplied multiple times for the TLS certificate hashes to trust. Useful when you have self-signed certificates."
       | App_Id _ ->
