@@ -12,6 +12,8 @@
     <Tailcalls>true</Tailcalls>
     <GenerateTailCalls>true</GenerateTailCalls>
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <!-- https://github.com/dotnet/sdk/pull/17594 -->
+    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="k8s\**\*" />

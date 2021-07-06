@@ -42,6 +42,7 @@ let testProjects =
   ++ "src/*.Tests/*.fsproj"
   -- "src/tests/Logary.Targets.SSE.Tests/*.fsproj"
   -- "src/tests/Logary.Targets.OpsGenie.Tests/*.fsproj"
+  -- "src/tests/Logary.Targets.BigQuery.Tests/*.fsproj"
 
 let libProjects =
   !! "src/targets/**/*.fsproj"
@@ -87,15 +88,8 @@ let replace fromStr toStr path =
    Shell.replaceInFiles [fromStr, toStr] [path]
 
 Target.create "PaketFiles" (fun _ ->
-  replace "module FsMtParserFull" "module Logary.Internals.FsMtParserFull"
-          "paket-files/messagetemplates/messagetemplates-fsharp/src/FsMtParser/FsMtParserFull.fs"
-
-  replace "module Aether" "module Logary.Internals.Aether"
-          "paket-files/xyncro/aether/src/Aether/Aether.fs"
-
   replace "namespace Logary.Facade" "namespace Libryy.Logging"
           "paket-files/logary/logary/src/Logary.Facade/Facade.fs"
-
   replace "namespace Logary.Facade" "namespace Cibryy.Logging"
           "paket-files/logary/logary/src/Logary.CSharp.Facade/Facade.cs"
 )

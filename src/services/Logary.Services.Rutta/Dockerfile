@@ -29,10 +29,6 @@ COPY Makefile paket.dependencies paket.lock ./
 RUN dotnet tool restore && \
     dotnet paket restore
 
-# Tried to optimise restore, but like all things MSFT it's not built to hack
-#&& \
-#dotnet restore -r linux-musl-x64 src/services/Logary.Services.Rutta/Logary.Services.Rutta.fsproj
-
 COPY . .
 
 RUN make version_files && \
@@ -55,23 +51,15 @@ ENV USER=logary
 ENV UID=12345
 ENV GID=23456
 
-# https://github.com/grpc/grpc/issues/21446
-# curl --silent -L -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
-# curl --silent -LO https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.31-r0/glibc-2.31-r0.apk && \
-# apk add glibc-2.31-r0.apk && \
+RUN useradd --user-group --system --create-home --home-dir /app $USER && \
+    chown -R $USER:$USER /app
 
-RUN apk update --no-cache && \
-    apk add libc6-compat zeromq protobuf protobuf-dev ca-certificates && \
-    addgroup -S "$USER" && \
-    adduser \
-      --disabled-password \
-      --gecos "" \
-      --home "$(pwd)" \
-      --ingroup "$USER" \
-      --no-create-home \
-      --uid "$UID" \
-      "$USER" && \
-    rm -f /var/cache/apk/*
+# https://packages.debian.org/search?searchon=sourcenames&keywords=zeromq
+RUN apt-get update && \
+    apt-get install -y libprotobuf-dev libprotoc17 libprotobuf17 protobuf-compiler ca-certificates libzmq3-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+USER $USER
 
 COPY --from=builder /app .
 
