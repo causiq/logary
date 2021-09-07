@@ -32,4 +32,4 @@ Created by [Henrik Feldt, et al](https://twitter.com/henrikfeldt) — if you lik
 
 ## Installation
 
-See [docs](https://logary.tech/dotnet/quickstart)
+See [docs](https://docs.logary.tech/dotnet/quickstart)
