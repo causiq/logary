@@ -8,7 +8,7 @@ spec:
   - api.logary.test
 
   gateways:
-  - istio-system/ingress # your singleton gateway in the istio system
+  - istio-gateways/ingress # your singleton gateway in the istio system
   - mesh # if this is accessible via the istio mesh
 
   http:

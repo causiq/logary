@@ -8,7 +8,7 @@ resources:
 - namespace.yaml
 - virtualservice.yaml
 
-# you'll need to add `istio-system/ingress` to take in external traffic and use this folder
+# you'll need to add `istio-gateways/ingress` to take in external traffic and use this folder
 
 commonLabels:
   app: logary
