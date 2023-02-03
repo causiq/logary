@@ -24,7 +24,7 @@
     "body-parser": "^1.19.0",
     "bootstrap": "^4.5.2",
     "classnames": "^2.2.6",
-    "cross-fetch": "^3.0.6",
+    "cross-fetch": "^3.1.5",
     "email-addresses": "^3.1.0",
     "highlight.js": "^9.15.6",
     "logary": "^6.0.0-beta.7",
